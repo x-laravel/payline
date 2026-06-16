@@ -5,6 +5,8 @@ namespace XLaravel\Payline;
 use Illuminate\Support\Manager;
 use XLaravel\Payline\Contracts\Gateway;
 use XLaravel\Payline\Contracts\Payable;
+use XLaravel\Payline\DTOs\CardProfile;
+use XLaravel\Payline\Routing\GatewayRouter;
 
 class PaylineManager extends Manager
 {
@@ -36,7 +38,31 @@ class PaylineManager extends Manager
         return new PendingPayment(
             gateway: $this->driver($driver),
             recorder: $this->container->make(TransactionRecorder::class),
+            manager: $this,
         );
+    }
+
+    /**
+     * Auto-route modunda PendingPayment döndürür.
+     * Gateway, pay($data) çağrısında PaymentData::$cardProfile üzerinden çözülür.
+     *
+     * Payline::viaAuto()->pay($data)
+     */
+    public function viaAuto(): PendingPayment
+    {
+        return new PendingPayment(
+            gateway: null,
+            recorder: $this->container->make(TransactionRecorder::class),
+            manager: $this,
+        );
+    }
+
+    /**
+     * Facade kısayolu: Payline::cheapestFor($profile, 3)
+     */
+    public function cheapestFor(CardProfile $profile, int $installments = 1): ?string
+    {
+        return $this->container->make(GatewayRouter::class)->cheapestFor($profile, $installments);
     }
 
     /**

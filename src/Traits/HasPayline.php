@@ -4,11 +4,9 @@ namespace XLaravel\Payline\Traits;
 
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use XLaravel\Payline\Enums\TransactionStatus;
-use XLaravel\Payline\Enums\TransactionType;
 use XLaravel\Payline\Models\Payment;
-use XLaravel\Payline\Models\Transaction;
-use XLaravel\Payline\PendingPayment;
 use XLaravel\Payline\PaylineManager;
+use XLaravel\Payline\PendingPayment;
 
 /**
  * Order, Invoice, User gibi herhangi bir Eloquent modele eklenebilir.
@@ -54,14 +52,17 @@ trait HasPayline
     }
 
     /**
-     * $order->payWith('iyzico')->pay($data)
-     * Model Payable implemente ediyorsa otomatik olarak payable olarak bağlanır.
+     * $order->pay()           → GatewayRouter en ucuz gateway'i seçer (PaymentData::$cardProfile gerekli)
+     * $order->pay('iyzico')   → explicit driver
      */
-    public function payWith(?string $driver = null): PendingPayment
+    public function pay(?string $driver = null): PendingPayment
     {
         /** @var PaylineManager $manager */
         $manager = app('payline');
-        $pending = $manager->via($driver);
+
+        $pending = $driver !== null
+            ? $manager->via($driver)
+            : $manager->viaAuto();
 
         if ($this instanceof \XLaravel\Payline\Contracts\Payable) {
             $pending->for($this);

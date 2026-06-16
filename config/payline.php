@@ -46,4 +46,6 @@ return [
     'transaction_model' => XLaravel\Payline\Models\Transaction::class,
 
     'webhook_log_model' => XLaravel\Payline\Models\WebhookLog::class,
+
+    'commission_rate_model' => XLaravel\Payline\Models\CommissionRate::class,
 ];

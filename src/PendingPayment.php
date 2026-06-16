@@ -2,6 +2,7 @@
 
 namespace XLaravel\Payline;
 
+use LogicException;
 use Throwable;
 use XLaravel\Payline\Contracts\Gateway;
 use XLaravel\Payline\Contracts\Payable;
@@ -22,6 +23,7 @@ use XLaravel\Payline\Events\PaymentSucceeded;
 use XLaravel\Payline\Events\PaymentVoided;
 use XLaravel\Payline\Models\Payment;
 use XLaravel\Payline\Models\Transaction;
+use XLaravel\Payline\Routing\GatewayRouter;
 
 class PendingPayment
 {
@@ -29,9 +31,34 @@ class PendingPayment
     protected ?object $owner = null;
 
     public function __construct(
-        protected readonly Gateway $gateway,
+        protected readonly ?Gateway $gateway,
         protected readonly TransactionRecorder $recorder,
+        protected readonly ?PaylineManager $manager = null,
     ) {}
+
+    protected function resolveGateway(PaymentData $data): Gateway
+    {
+        if ($this->gateway !== null) {
+            return $this->gateway;
+        }
+
+        if ($this->manager !== null && $data->cardProfile !== null) {
+            $driver = app(GatewayRouter::class)->cheapestFor(
+                $data->cardProfile,
+                $data->installments ?? 1,
+            );
+
+            if ($driver !== null) {
+                return $this->manager->driver($driver);
+            }
+        }
+
+        if ($this->manager !== null) {
+            return $this->manager->driver();
+        }
+
+        throw new LogicException('Gateway çözümlenemedi: driver belirtilmedi ve cardProfile eksik.');
+    }
 
     public function for(Payable $payable): static
     {
@@ -47,8 +74,10 @@ class PendingPayment
 
     public function pay(PaymentData $data): PaymentResponse
     {
+        $gateway = $this->resolveGateway($data);
+
         $payment = $this->recorder->createPayment(
-            gateway: $this->gateway->getName(),
+            gateway: $gateway->getName(),
             data: $data,
             payable: $this->payable,
             owner: $this->owner,
@@ -63,13 +92,15 @@ class PendingPayment
 
         event(new PaymentInitiated($payment, $tx, $data));
 
-        return $this->run($payment, $tx, fn () => $this->gateway->pay($data));
+        return $this->run($payment, $tx, fn () => $gateway->pay($data));
     }
 
     public function authorize(PaymentData $data): PaymentResponse
     {
+        $gateway = $this->resolveGateway($data);
+
         $payment = $this->recorder->createPayment(
-            gateway: $this->gateway->getName(),
+            gateway: $gateway->getName(),
             data: $data,
             payable: $this->payable,
             owner: $this->owner,
@@ -84,45 +115,57 @@ class PendingPayment
 
         event(new PaymentInitiated($payment, $tx, $data));
 
-        return $this->run($payment, $tx, fn () => $this->gateway->authorize($data));
+        return $this->run($payment, $tx, fn () => $gateway->authorize($data));
     }
 
     public function capture(CaptureData $data, Payment $payment, Transaction $parent): PaymentResponse
     {
+        $gateway = $this->gateway ?? $this->manager?->driver()
+            ?? throw new LogicException('Capture için driver belirtilmeli.');
+
         $tx = $this->recorder->createCaptureTransaction(
             payment: $payment,
             data: $data,
             parent: $parent,
         );
 
-        return $this->run($payment, $tx, fn () => $this->gateway->capture($data));
+        return $this->run($payment, $tx, fn () => $gateway->capture($data));
     }
 
     public function refund(RefundData $data, Payment $payment, Transaction $parent): PaymentResponse
     {
+        $gateway = $this->gateway ?? $this->manager?->driver()
+            ?? throw new LogicException('Refund için driver belirtilmeli.');
+
         $tx = $this->recorder->createRefundTransaction(
             payment: $payment,
             data: $data,
             parent: $parent,
         );
 
-        return $this->run($payment, $tx, fn () => $this->gateway->refund($data));
+        return $this->run($payment, $tx, fn () => $gateway->refund($data));
     }
 
     public function void(VoidData $data, Payment $payment, Transaction $parent): PaymentResponse
     {
+        $gateway = $this->gateway ?? $this->manager?->driver()
+            ?? throw new LogicException('Void için driver belirtilmeli.');
+
         $tx = $this->recorder->createVoidTransaction(
             payment: $payment,
             data: $data,
             parent: $parent,
         );
 
-        return $this->run($payment, $tx, fn () => $this->gateway->void($data));
+        return $this->run($payment, $tx, fn () => $gateway->void($data));
     }
 
     public function handleCallback(CallbackData $data): PaymentResponse
     {
-        $response = $this->gateway->handleCallback($data);
+        $gateway = $this->gateway ?? $this->manager?->driver()
+            ?? throw new LogicException('Callback için driver belirtilmeli.');
+
+        $response = $gateway->handleCallback($data);
 
         $tx = $this->recorder->findTransactionByGatewayOrderId($response->gatewayOrderId ?? '')
             ?? $this->recorder->findTransactionByGatewayTransactionId($response->gatewayTransactionId ?? '');

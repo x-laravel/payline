@@ -3,6 +3,7 @@
 namespace XLaravel\Payline;
 
 use Illuminate\Support\ServiceProvider;
+use XLaravel\Payline\Routing\GatewayRouter;
 
 class PaylineServiceProvider extends ServiceProvider
 {
@@ -13,6 +14,7 @@ class PaylineServiceProvider extends ServiceProvider
         $this->app->singleton('payline', fn ($app) => new PaylineManager($app));
         $this->app->alias('payline', PaylineManager::class);
         $this->app->singleton(TransactionRecorder::class);
+        $this->app->singleton(GatewayRouter::class);
     }
 
     public function boot(): void

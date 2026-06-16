@@ -97,7 +97,7 @@ $data = PaymentData::fromPayable($order, [
     'callbackUrl' => route('payment.callback'),
 ]);
 
-$response = $order->payWith('iyzico')->pay($data);
+$response = $order->pay('iyzico')->pay($data);
 ```
 
 Or using the facade:
@@ -132,7 +132,7 @@ if ($response->isFailure()) {
 
 ```php
 // 1. Reserve funds without capturing
-$response = $order->payWith()->authorize($data);
+$response = $order->pay()->authorize($data);
 
 // 2. Capture later
 use XLaravel\Payline\DTOs\CaptureData;
@@ -171,8 +171,64 @@ Payline::via()->void(
 Payline::driver('iyzico')             // raw Gateway — no DB recording
 Payline::via('iyzico')                // PendingPayment — recording + events
 Payline::for($order)->via('iyzico')   // same, with a Payable bound
-$order->payWith('iyzico')             // shortcut via HasPayline trait
+$order->pay('iyzico')                 // explicit driver via HasPayline trait
+$order->pay()                         // auto-routing: cheapest gateway selected by GatewayRouter
 ```
+
+## Commission Routing
+
+Automatically route payments to the cheapest gateway based on card family, card type, and installment count. Rates are stored in the database (`payline_commission_rates`) and can be updated without deployment.
+
+### Setup
+
+Seed commission rates for each gateway:
+
+```php
+use XLaravel\Payline\Models\CommissionRate;
+
+// Wildcard: applies to all card families / types
+CommissionRate::create(['gateway' => 'hoppa', 'card_family' => null, 'card_type' => null, 'installments' => 1, 'rate' => 2.03]);
+
+// Specific card family + type
+CommissionRate::create(['gateway' => 'qnb', 'card_family' => 'CardFinans', 'card_type' => 'credit', 'installments' => 3, 'rate' => 2.92, 'blocking_days' => 3]);
+CommissionRate::create(['gateway' => 'hoppa', 'card_family' => 'Bonus',     'card_type' => 'credit', 'installments' => 3, 'rate' => 2.03]);
+```
+
+Soft-delete a rate to deactivate it without losing history:
+
+```php
+CommissionRate::find($id)->delete();
+```
+
+### Usage
+
+```php
+use XLaravel\Payline\DTOs\CardProfile;
+use XLaravel\Payline\Enums\CardType;
+
+$data = PaymentData::fromPayable($order, [
+    'card'        => $cardData,
+    'installments'=> 3,
+    'cardProfile' => new CardProfile('Bonus', CardType::Credit),
+]);
+
+// Auto-route — cheapest gateway is selected automatically
+$order->pay()->pay($data);
+
+// Explicit driver — skip routing
+$order->pay('iyzico')->pay($data);
+
+// Query directly
+Payline::cheapestFor(new CardProfile('Bonus', CardType::Credit), installments: 3);
+// → 'hoppa'
+
+// Full ranked list
+app(\XLaravel\Payline\Routing\GatewayRouter::class)
+    ->rankedFor(new CardProfile('Bonus', CardType::Credit), 3);
+// → ['hoppa' => 2.03, 'qnb' => 2.92]
+```
+
+**Matching priority:** Rows with exact `card_family` + `card_type` take precedence over wildcards (`null`). If no row matches, the configured default gateway is used.
 
 ## HasPayline Trait
 
@@ -184,7 +240,8 @@ $order->successfulPayments()  // only successful ones
 $order->pendingPayments()     // initiated + pending
 $order->amountPaid()          // int — total charged (in kuruş)
 $order->lastPayment()         // latest Payment model, or null
-$order->payWith('iyzico')     // start a payment
+$order->pay()                 // start a payment (auto-route via GatewayRouter)
+$order->pay('iyzico')         // start a payment (explicit driver)
 ```
 
 ## PaymentResponse
@@ -379,6 +436,17 @@ payline_webhook_logs
 ├── status           (received / processing / processed / failed)
 ├── exception        (text, nullable)
 ├── processed_at
+└── timestamps
+
+payline_commission_rates
+├── id              (ulid)
+├── gateway         ('hoppa', 'qnb', 'iyzico'…)
+├── card_family     (string, nullable — null = wildcard)
+├── card_type       ('credit' / 'debit' / 'foreign_credit', nullable — null = wildcard)
+├── installments    (int, default 1)
+├── rate            (decimal 8,4 — e.g. 2.9200 means 2.92%)
+├── blocking_days   (int, nullable)
+├── deleted_at      (soft delete — null = active)
 └── timestamps
 ```
 

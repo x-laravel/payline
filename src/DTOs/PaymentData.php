@@ -27,6 +27,7 @@ readonly class PaymentData
         public ?array $billingAddress = null,
         public ?array $shippingAddress = null,
         public ?array $metadata = null,
+        public ?CardProfile $cardProfile = null,
     ) {}
 
     public static function fromPayable(Payable $payable, array $extra = []): self
