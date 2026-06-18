@@ -42,9 +42,11 @@ class PendingPayment
             return $this->gateway;
         }
 
-        if ($this->manager !== null && $data->cardProfile !== null) {
+        $cardProfile = $data->card?->profile ?? $data->cardProfile;
+
+        if ($this->manager !== null && $cardProfile !== null) {
             $driver = app(GatewayRouter::class)->cheapestFor(
-                $data->cardProfile,
+                $cardProfile,
                 $data->installments ?? 1,
             );
 

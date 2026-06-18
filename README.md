@@ -82,11 +82,11 @@ PAYLINE_DRIVER=iyzico
 ### Making a Payment
 
 ```php
-use XLaravel\Payline\DTOs\CardData;
+use XLaravel\Payline\DTOs\Card;
 use XLaravel\Payline\DTOs\PaymentData;
 
 $data = PaymentData::fromPayable($order, [
-    'card' => new CardData(
+    'card' => new Card(
         number: '4111111111111111',
         holderName: 'John Doe',
         expiryMonth: '12',
@@ -203,13 +203,20 @@ CommissionRate::find($id)->delete();
 ### Usage
 
 ```php
+use XLaravel\Payline\DTOs\Card;
 use XLaravel\Payline\DTOs\CardProfile;
 use XLaravel\Payline\Enums\CardType;
 
 $data = PaymentData::fromPayable($order, [
-    'card'        => $cardData,
-    'installments'=> 3,
-    'cardProfile' => new CardProfile('Bonus', CardType::Credit),
+    'card' => new Card(
+        holderName: 'Ali Veli',
+        number: '4111111111111111',
+        expiryMonth: '12',
+        expiryYear: '2030',
+        cvv: '123',
+        profile: new CardProfile('Bonus', CardType::Credit),
+    ),
+    'installments' => 3,
 ]);
 
 // Auto-route — cheapest gateway is selected automatically

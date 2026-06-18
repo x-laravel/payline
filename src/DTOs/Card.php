@@ -2,7 +2,7 @@
 
 namespace XLaravel\Payline\DTOs;
 
-readonly class CardData
+readonly class Card
 {
     public function __construct(
         public string $holderName,
@@ -10,6 +10,7 @@ readonly class CardData
         public string $expiryMonth,
         public string $expiryYear,
         public string $cvv,
+        public ?CardProfile $profile = null,
     ) {}
 
     public function lastFour(): string
