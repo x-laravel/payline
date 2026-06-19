@@ -1,7 +1,7 @@
 # Payline
 
 [![Tests](https://github.com/x-laravel/payline/actions/workflows/tests.yml/badge.svg)](https://github.com/x-laravel/payline/actions/workflows/tests.yml)
-[![PHP](https://img.shields.io/badge/PHP-8.2%2B-blue)](https://www.php.net)
+[![PHP](https://img.shields.io/badge/PHP-8.3%2B-blue)](https://www.php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-11%20|%2012%20|%2013-red)](https://laravel.com)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE.md)
 
@@ -19,7 +19,7 @@ A modern, DTO-based Laravel payment gateway abstraction layer. Driver packages f
 
 ## Requirements
 
-- PHP ^8.2
+- PHP ^8.3
 - Laravel ^12.0 | ^13.0
 - At least one driver package (`x-laravel/payline-hoppa`, `x-laravel/payline-iyzico`, etc.)
 
