@@ -94,7 +94,6 @@ $data = PaymentData::fromPayable($order, [
         cvv: '123',
     ),
     'customerIp' => $request->ip(),
-    'callbackUrl' => route('payment.callback'),
 ]);
 
 $response = $order->pay('iyzico')->pay($data);

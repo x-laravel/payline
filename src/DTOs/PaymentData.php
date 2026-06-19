@@ -30,6 +30,32 @@ readonly class PaymentData
         public ?CardProfile $cardProfile = null,
     ) {}
 
+    public function withCallbackUrl(string $url): self
+    {
+        return new self(
+            reference: $this->reference,
+            amount: $this->amount,
+            currency: $this->currency,
+            customerEmail: $this->customerEmail,
+            customerName: $this->customerName,
+            customerPhone: $this->customerPhone,
+            customerIp: $this->customerIp,
+            description: $this->description,
+            method: $this->method,
+            card: $this->card,
+            cardToken: $this->cardToken,
+            saveCard: $this->saveCard,
+            threeDs: $this->threeDs,
+            installments: $this->installments,
+            callbackUrl: $url,
+            basketItems: $this->basketItems,
+            billingAddress: $this->billingAddress,
+            shippingAddress: $this->shippingAddress,
+            metadata: $this->metadata,
+            cardProfile: $this->cardProfile,
+        );
+    }
+
     public static function fromPayable(Payable $payable, array $extra = []): self
     {
         return new self(

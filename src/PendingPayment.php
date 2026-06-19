@@ -78,6 +78,10 @@ class PendingPayment
     {
         $gateway = $this->resolveGateway($data);
 
+        if ($data->callbackUrl === null) {
+            $data = $data->withCallbackUrl(route('payline.callback', ['gateway' => $gateway->getName()]));
+        }
+
         $payment = $this->recorder->createPayment(
             gateway: $gateway->getName(),
             data: $data,
@@ -100,6 +104,10 @@ class PendingPayment
     public function authorize(PaymentData $data): PaymentResponse
     {
         $gateway = $this->resolveGateway($data);
+
+        if ($data->callbackUrl === null) {
+            $data = $data->withCallbackUrl(route('payline.callback', ['gateway' => $gateway->getName()]));
+        }
 
         $payment = $this->recorder->createPayment(
             gateway: $gateway->getName(),
