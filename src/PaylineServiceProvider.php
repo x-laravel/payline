@@ -2,7 +2,10 @@
 
 namespace XLaravel\Payline;
 
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\ServiceProvider;
+use XLaravel\Payline\Http\Controllers\CallbackController;
+use XLaravel\Payline\Http\Controllers\WebhookController;
 use XLaravel\Payline\Routing\GatewayRouter;
 
 class PaylineServiceProvider extends ServiceProvider
@@ -65,10 +68,17 @@ class PaylineServiceProvider extends ServiceProvider
 
         $prefix = $this->app['config']->get('payline.routes.prefix', 'payline');
         $middleware = $this->app['config']->get('payline.routes.middleware', ['web']);
+        $webhookMiddleware = $this->app['config']->get('payline.routes.webhook_middleware', []);
 
-        $this->app['router']
-            ->prefix($prefix)
+        $router = $this->app['router'];
+
+        $router->match(['GET', 'POST'], "{$prefix}/callback/{gateway}", CallbackController::class)
             ->middleware($middleware)
-            ->group(__DIR__ . '/../routes/payline.php');
+            ->name('payline.callback');
+
+        $router->post("{$prefix}/webhooks/{gateway}", WebhookController::class)
+            ->middleware(array_merge($middleware, $webhookMiddleware))
+            ->withoutMiddleware(['web', 'csrf', VerifyCsrfToken::class])
+            ->name('payline.webhook');
     }
 }
