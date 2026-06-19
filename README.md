@@ -84,9 +84,9 @@ PAYLINE_DRIVER=iyzico
 
 ```php
 use XLaravel\Payline\DTOs\Card;
-use XLaravel\Payline\DTOs\PaymentData;
+use XLaravel\Payline\DTOs\PaymentRequest;
 
-$data = PaymentData::fromPayable($order, [
+$data = PaymentRequest::fromPayable($order, [
     'card' => new Card(
         number: '4111111111111111',
         holderName: 'John Doe',
@@ -210,7 +210,7 @@ use XLaravel\Payline\DTOs\CardProfile;
 use XLaravel\Payline\Enums\CardType;
 
 // Option A: manual profile
-$data = PaymentData::fromPayable($order, [
+$data = PaymentRequest::fromPayable($order, [
     'card' => new Card(
         holderName: 'Ali Veli',
         number: '4111111111111111',
@@ -223,7 +223,7 @@ $data = PaymentData::fromPayable($order, [
 ]);
 
 // Option B: BIN lookup (see BIN Lookup section)
-$data = PaymentData::fromPayable($order, [
+$data = PaymentRequest::fromPayable($order, [
     'card' => (new Card(holderName: 'Ali Veli', number: '4111111111111111', ...))->resolveProfile(),
     'installments' => 3,
 ]);
@@ -262,9 +262,9 @@ PAYLINE_BIN_LOOKUP_DRIVER=iyzico
 
 ```php
 use XLaravel\Payline\DTOs\Card;
-use XLaravel\Payline\DTOs\PaymentData;
+use XLaravel\Payline\DTOs\PaymentRequest;
 
-$data = PaymentData::fromPayable($order, [
+$data = PaymentRequest::fromPayable($order, [
     'card' => (new Card(
         holderName: 'Ali Veli',
         number: '4111111111111111',
@@ -360,7 +360,7 @@ All events carry a `Payment` and `Transaction` model.
 
 | Event | Fired when | Extra payload |
 |-------|-----------|---------------|
-| `PaymentInitiated` | Before the gateway call | `PaymentData` |
+| `PaymentInitiated` | Before the gateway call | `PaymentRequest` |
 | `PaymentSucceeded` | Gateway confirms success | `PaymentResponse` |
 | `PaymentFailed` | Gateway returns failure | `PaymentResponse` |
 | `PaymentAuthorized` | Pre-authorization succeeds | `PaymentResponse` |
@@ -433,8 +433,8 @@ class MyGatewayDriver implements Gateway
 {
     public function __construct(private array $config) {}
 
-    public function pay(PaymentData $data): PaymentResponse { ... }
-    public function authorize(PaymentData $data): PaymentResponse { ... }
+    public function pay(PaymentRequest $data): PaymentResponse { ... }
+    public function authorize(PaymentRequest $data): PaymentResponse { ... }
     public function capture(CaptureData $data): PaymentResponse { ... }
     public function refund(RefundData $data): PaymentResponse { ... }
     public function void(VoidData $data): PaymentResponse { ... }

@@ -4,16 +4,16 @@ namespace XLaravel\Payline\Contracts;
 
 use XLaravel\Payline\DTOs\CallbackData;
 use XLaravel\Payline\DTOs\CaptureData;
-use XLaravel\Payline\DTOs\PaymentData;
+use XLaravel\Payline\DTOs\PaymentRequest;
 use XLaravel\Payline\DTOs\PaymentResponse;
 use XLaravel\Payline\DTOs\RefundData;
 use XLaravel\Payline\DTOs\VoidData;
 
 interface Gateway
 {
-    public function pay(PaymentData $data): PaymentResponse;
+    public function pay(PaymentRequest $data): PaymentResponse;
 
-    public function authorize(PaymentData $data): PaymentResponse;
+    public function authorize(PaymentRequest $data): PaymentResponse;
 
     public function capture(CaptureData $data): PaymentResponse;
 

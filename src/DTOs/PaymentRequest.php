@@ -5,7 +5,7 @@ namespace XLaravel\Payline\DTOs;
 use XLaravel\Payline\Contracts\Payable;
 use XLaravel\Payline\Enums\PaymentMethod;
 
-readonly class PaymentData
+readonly class PaymentRequest
 {
     public function __construct(
         public string $reference,

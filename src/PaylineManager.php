@@ -44,7 +44,7 @@ class PaylineManager extends Manager
 
     /**
      * Auto-route modunda PendingPayment döndürür.
-     * Gateway, pay($data) çağrısında PaymentData::$cardProfile üzerinden çözülür.
+     * Gateway, pay($data) çağrısında PaymentRequest::$cardProfile üzerinden çözülür.
      *
      * Payline::viaAuto()->charge($data)
      */

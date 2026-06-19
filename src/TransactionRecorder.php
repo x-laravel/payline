@@ -4,7 +4,7 @@ namespace XLaravel\Payline;
 
 use XLaravel\Payline\Contracts\Payable;
 use XLaravel\Payline\DTOs\CaptureData;
-use XLaravel\Payline\DTOs\PaymentData;
+use XLaravel\Payline\DTOs\PaymentRequest;
 use XLaravel\Payline\DTOs\PaymentResponse;
 use XLaravel\Payline\DTOs\RefundData;
 use XLaravel\Payline\DTOs\VoidData;
@@ -17,7 +17,7 @@ class TransactionRecorder
 {
     public function createPayment(
         string $gateway,
-        PaymentData $data,
+        PaymentRequest $data,
         ?Payable $payable = null,
         ?object $owner = null,
     ): Payment {
@@ -42,7 +42,7 @@ class TransactionRecorder
     public function createTransaction(
         Payment $payment,
         TransactionType $type,
-        PaymentData $data,
+        PaymentRequest $data,
         int $attempt = 1,
     ): Transaction {
         /** @var class-string<Transaction> $model */

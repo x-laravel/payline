@@ -52,7 +52,7 @@ trait HasPayline
     }
 
     /**
-     * $order->pay()           → GatewayRouter en ucuz gateway'i seçer (PaymentData::$cardProfile gerekli)
+     * $order->pay()           → GatewayRouter en ucuz gateway'i seçer (PaymentRequest::$cardProfile gerekli)
      * $order->pay('iyzico')   → explicit driver
      */
     public function pay(?string $driver = null): PendingPayment

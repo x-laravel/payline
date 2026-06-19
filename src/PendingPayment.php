@@ -8,7 +8,7 @@ use XLaravel\Payline\Contracts\Gateway;
 use XLaravel\Payline\Contracts\Payable;
 use XLaravel\Payline\DTOs\CallbackData;
 use XLaravel\Payline\DTOs\CaptureData;
-use XLaravel\Payline\DTOs\PaymentData;
+use XLaravel\Payline\DTOs\PaymentRequest;
 use XLaravel\Payline\DTOs\PaymentResponse;
 use XLaravel\Payline\DTOs\RefundData;
 use XLaravel\Payline\DTOs\VoidData;
@@ -36,7 +36,7 @@ class PendingPayment
         protected readonly ?PaylineManager $manager = null,
     ) {}
 
-    protected function resolveGateway(PaymentData $data): Gateway
+    protected function resolveGateway(PaymentRequest $data): Gateway
     {
         if ($this->gateway !== null) {
             return $this->gateway;
@@ -74,7 +74,7 @@ class PendingPayment
         return $this;
     }
 
-    public function charge(PaymentData $data): PaymentResponse
+    public function charge(PaymentRequest $data): PaymentResponse
     {
         $gateway = $this->resolveGateway($data);
 
@@ -101,7 +101,7 @@ class PendingPayment
         return $this->run($payment, $tx, fn () => $gateway->pay($data));
     }
 
-    public function authorize(PaymentData $data): PaymentResponse
+    public function authorize(PaymentRequest $data): PaymentResponse
     {
         $gateway = $this->resolveGateway($data);
 
