@@ -13,6 +13,18 @@ readonly class Card
         public ?CardProfile $profile = null,
     ) {}
 
+    public function withProfile(CardProfile $profile): self
+    {
+        return new self(
+            holderName: $this->holderName,
+            number: $this->number,
+            expiryMonth: $this->expiryMonth,
+            expiryYear: $this->expiryYear,
+            cvv: $this->cvv,
+            profile: $profile,
+        );
+    }
+
     public function lastFour(): string
     {
         return substr($this->number, -4);

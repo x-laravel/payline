@@ -10,11 +10,12 @@ A modern, DTO-based Laravel payment gateway abstraction layer. Driver packages f
 ## How It Works
 
 - Implement the `Payable` interface on any model (Order, Invoice, etc.) to make it payable
-- Add the `HasPayline` trait to get payment relationships and a `payWith()` shortcut
+- Add the `HasPayline` trait to get payment relationships and a `pay()` shortcut
 - Every gateway operation automatically creates a `Payment` + `Transaction` record in the database
 - 3DS callbacks and server-to-server webhooks are handled via built-in routes
 - Laravel Events are dispatched on every status change
 - Driver packages register themselves via `extend()` — one line, no core changes needed
+- BIN lookup resolves card family and type automatically, enabling commission-based auto-routing
 
 ## Requirements
 
@@ -201,11 +202,14 @@ CommissionRate::find($id)->delete();
 
 ### Usage
 
+`CardProfile` can be provided manually or resolved automatically via [BIN Lookup](#bin-lookup).
+
 ```php
 use XLaravel\Payline\DTOs\Card;
 use XLaravel\Payline\DTOs\CardProfile;
 use XLaravel\Payline\Enums\CardType;
 
+// Option A: manual profile
 $data = PaymentData::fromPayable($order, [
     'card' => new Card(
         holderName: 'Ali Veli',
@@ -215,6 +219,14 @@ $data = PaymentData::fromPayable($order, [
         cvv: '123',
         profile: new CardProfile('Bonus', CardType::Credit),
     ),
+    'installments' => 3,
+]);
+
+// Option B: BIN lookup (see BIN Lookup section)
+$card = new Card(holderName: 'Ali Veli', number: '4111111111111111', ...);
+$profile = app(\XLaravel\Payline\BinLookupManager::class)->lookup($card->number);
+$data = PaymentData::fromPayable($order, [
+    'card' => $profile ? $card->withProfile($profile) : $card,
     'installments' => 3,
 ]);
 
@@ -235,6 +247,87 @@ app(\XLaravel\Payline\Routing\GatewayRouter::class)
 ```
 
 **Matching priority:** Rows with exact `card_family` + `card_type` take precedence over wildcards (`null`). If no row matches, the configured default gateway is used.
+
+## BIN Lookup
+
+Automatically resolve a card's family and type from its BIN (first 8 digits of the card number), eliminating the need to pass `CardProfile` manually. BIN lookup drivers are provided by gateway packages — the core package ships with a `null` driver that always returns `null`.
+
+### Setup
+
+Install a driver package that supports BIN lookup and set the driver in `.env`:
+
+```env
+PAYLINE_BIN_LOOKUP_DRIVER=iyzico
+```
+
+### Usage
+
+```php
+use XLaravel\Payline\BinLookupManager;
+use XLaravel\Payline\DTOs\Card;
+use XLaravel\Payline\DTOs\PaymentData;
+
+$card = new Card(
+    holderName: 'Ali Veli',
+    number: '4111111111111111',
+    expiryMonth: '12',
+    expiryYear: '2030',
+    cvv: '123',
+);
+
+$profile = app(BinLookupManager::class)->lookup($card->number);
+
+if ($profile !== null) {
+    $card = $card->withProfile($profile);
+}
+
+$data = PaymentData::fromPayable($order, [
+    'card' => $card,
+    'installments' => 3,
+]);
+
+// CardProfile resolved — GatewayRouter picks the cheapest gateway automatically
+$order->pay()->pay($data);
+```
+
+If the BIN lookup driver returns `null` (unknown card or no driver configured), the default gateway is used and routing is skipped.
+
+### Writing a BIN Lookup Driver
+
+Implement `BinLookupProvider` and register it in your driver package's ServiceProvider:
+
+```php
+use XLaravel\Payline\Contracts\BinLookupProvider;
+use XLaravel\Payline\DTOs\CardProfile;
+
+class MyBinLookupProvider implements BinLookupProvider
+{
+    public function __construct(private array $config) {}
+
+    public function lookup(string $bin): ?CardProfile
+    {
+        // Call your BIN lookup API with $bin (first 8 digits, already extracted)
+        $result = $this->callApi($bin);
+
+        if (! $result) {
+            return null;
+        }
+
+        return new CardProfile($result['family'], CardType::from($result['type']));
+    }
+}
+```
+
+```php
+public function boot(): void
+{
+    $this->app->make('payline.bin_lookup')->extend('my-gateway', function ($app, array $config) {
+        return new MyBinLookupProvider($config);
+    });
+}
+```
+
+The `$config` array is automatically injected from `config('payline.bin_lookup.drivers.my-gateway')`.
 
 ## HasPayline Trait
 
@@ -372,10 +465,15 @@ public function boot(): void
     $this->app->make('payline')->extend('my-gateway', function ($app, array $config) {
         return new MyGatewayDriver($config);
     });
+
+    // Optional: register a BIN lookup driver
+    $this->app->make('payline.bin_lookup')->extend('my-gateway', function ($app, array $config) {
+        return new MyBinLookupProvider($config);
+    });
 }
 ```
 
-The `$config` array is automatically injected from `config('payline.gateways.my-gateway')`.
+The `$config` array for the gateway driver is injected from `config('payline.gateways.my-gateway')`. For the BIN lookup driver, it comes from `config('payline.bin_lookup.drivers.my-gateway')`.
 
 ## Configuration
 
@@ -389,6 +487,14 @@ return [
             'api_key'    => env('IYZICO_API_KEY'),
             'secret_key' => env('IYZICO_SECRET_KEY'),
             'base_url'   => env('IYZICO_BASE_URL', 'https://sandbox-api.iyzipay.com'),
+        ],
+    ],
+
+    'bin_lookup' => [
+        'default' => env('PAYLINE_BIN_LOOKUP_DRIVER', 'null'), // 'null' = disabled
+        'drivers' => [
+            // driver-specific config (injected into BinLookupProvider constructor)
+            // 'my-gateway' => ['api_key' => env('MY_GATEWAY_API_KEY')],
         ],
     ],
 

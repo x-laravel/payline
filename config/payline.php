@@ -41,6 +41,11 @@ return [
         'webhook_middleware' => [],
     ],
 
+    'bin_lookup' => [
+        'default' => env('PAYLINE_BIN_LOOKUP_DRIVER', 'null'),
+        'drivers' => [],
+    ],
+
     'payment_model' => XLaravel\Payline\Models\Payment::class,
 
     'transaction_model' => XLaravel\Payline\Models\Transaction::class,
