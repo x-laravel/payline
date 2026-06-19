@@ -22,8 +22,4 @@ class CommissionRate extends Model
         ];
     }
 
-    public function scopeForGateway($query, string $gateway)
-    {
-        return $query->where('gateway', $gateway);
-    }
 }
