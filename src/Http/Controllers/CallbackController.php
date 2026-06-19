@@ -19,18 +19,24 @@ class CallbackController extends Controller
             rawBody: $request->getContent() ?: null,
         );
 
-        $response = $manager->via($gateway)->handleCallback($data);
+        $result = $manager->via($gateway)->handleCallback($data);
 
-        if ($response->isSuccessful()) {
+        $flash = [
+            'payline_status' => $result->response->status->value,
+            'payline_payment_id' => $result->transaction?->payment_id,
+            'payline_transaction_id' => $result->transaction?->id,
+        ];
+
+        if ($result->response->isSuccessful()) {
             $url = config("payline.gateways.{$gateway}.callback_success_url")
                 ?? config('payline.callback_success_url', '/');
 
-            return redirect($url)->with('payline_response', $response);
+            return redirect($url)->with($flash);
         }
 
         $url = config("payline.gateways.{$gateway}.callback_failure_url")
             ?? config('payline.callback_failure_url', '/');
 
-        return redirect($url)->with('payline_response', $response);
+        return redirect($url)->with($flash);
     }
 }

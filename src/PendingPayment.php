@@ -7,6 +7,7 @@ use Throwable;
 use XLaravel\Payline\Contracts\Gateway;
 use XLaravel\Payline\Contracts\Payable;
 use XLaravel\Payline\DTOs\CallbackData;
+use XLaravel\Payline\DTOs\CallbackResult;
 use XLaravel\Payline\DTOs\CaptureData;
 use XLaravel\Payline\DTOs\PaymentRequest;
 use XLaravel\Payline\DTOs\PaymentResponse;
@@ -174,7 +175,7 @@ class PendingPayment
         return $this->run($payment, $tx, fn () => $gateway->void($data));
     }
 
-    public function handleCallback(CallbackData $data): PaymentResponse
+    public function handleCallback(CallbackData $data): CallbackResult
     {
         $gateway = $this->gateway ?? $this->manager?->driver()
             ?? throw new LogicException('A driver must be specified for callback handling.');
@@ -186,13 +187,13 @@ class PendingPayment
 
         if (! $tx) {
             event(new CallbackUnmatched($gateway->getName(), $response));
-            return $response;
+            return new CallbackResult($response, null);
         }
 
         $this->recorder->updateTransaction($tx, $response);
         $this->dispatchStatusEvent($response, $tx->payment, $tx);
 
-        return $response;
+        return new CallbackResult($response, $tx);
     }
 
     private function run(Payment $payment, Transaction $tx, callable $action): PaymentResponse
