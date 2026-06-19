@@ -415,6 +415,8 @@ Most events carry a `Payment` and `Transaction` model. Exceptions are noted belo
 ```php
 use XLaravel\Payline\Events\PaymentSucceeded;
 use XLaravel\Payline\Events\PaymentPending;
+use XLaravel\Payline\Events\PaymentFailed;
+use XLaravel\Payline\Events\PaymentErrored;
 use XLaravel\Payline\Events\CallbackUnmatched;
 
 class SendPaymentConfirmation
@@ -431,6 +433,31 @@ class HandlePendingPayment
     public function handle(PaymentPending $event): void
     {
         // $event->response->redirectUrl is ready; store payment ID in session if needed
+    }
+}
+
+// Gateway returned a failure response (e.g. insufficient funds, card declined)
+class HandlePaymentFailed
+{
+    public function handle(PaymentFailed $event): void
+    {
+        Log::info('Payment declined', [
+            'payment_id' => $event->payment->id,
+            'error_code' => $event->response->errorCode,
+            'error_message' => $event->response->errorMessage,
+        ]);
+    }
+}
+
+// Gateway call threw an exception (network error, timeout, parse failure)
+class HandlePaymentErrored
+{
+    public function handle(PaymentErrored $event): void
+    {
+        Log::error('Payment gateway exception', [
+            'payment_id' => $event->payment->id,
+            'error' => $event->exception->getMessage(),
+        ]);
     }
 }
 
@@ -467,15 +494,18 @@ Point your gateway's dashboard to this URL. The controller verifies the signatur
 $payment->payable;                 // polymorphic — Order, Invoice, etc.
 $payment->owner;                   // polymorphic — User, etc.
 $payment->transactions();          // all gateway calls for this payment
-$payment->latestTransaction();
-$payment->successfulTransaction();
-$payment->refunds();
+$payment->latestTransaction;       // HasOne — latest transaction (eager-loadable)
+$payment->successfulTransaction;   // HasOne — successful payment tx (eager-loadable)
+$payment->refunds();               // HasMany — all refund transactions
 
 $payment->isSuccessful();
 $payment->isPending();
 $payment->totalRefunded();         // int, kuruş
 $payment->remainingRefundable();   // int, kuruş
 $payment->nextAttemptNumber();
+
+// Eager load to avoid N+1
+Payment::with('latestTransaction', 'successfulTransaction')->get();
 ```
 
 ### Transaction
@@ -556,8 +586,8 @@ return [
     'routes' => [
         'enabled'            => true,
         'prefix'             => 'payline',
-        'middleware'         => ['web'],
-        'webhook_middleware' => [],
+        'middleware'         => ['web'],        // applied to both callback and webhook routes
+        'webhook_middleware' => [],             // applied to webhook route only (e.g. ['throttle:60,1'])
     ],
 ];
 ```
@@ -600,7 +630,7 @@ payline_webhook_logs
 ├── event_type
 ├── gateway_event_id (unique per gateway)
 ├── payload          (json)
-├── status           (received / processing / processed / failed)
+├── status           (WebhookStatus enum: received / processing / processed / failed)
 ├── exception        (text, nullable)
 ├── processed_at
 └── timestamps
