@@ -100,6 +100,8 @@ $data = PaymentRequest::fromPayable($order, [
 $response = $order->pay('iyzico')->charge($data);
 ```
 
+> **Security:** `Card` implements `__debugInfo()` — CVV and the full card number are automatically masked in `var_dump()`, `dd()`, logs, and tools like Telescope. The raw values are never leaked through debug output.
+
 Or using the facade:
 
 ```php
@@ -356,27 +358,52 @@ Helper methods: `isSuccessful()`, `isPending()`, `isFailure()`, `requiresRedirec
 
 ## Events
 
-All events carry a `Payment` and `Transaction` model.
+Most events carry a `Payment` and `Transaction` model. Exceptions are noted below.
 
 | Event | Fired when | Extra payload |
 |-------|-----------|---------------|
 | `PaymentInitiated` | Before the gateway call | `PaymentRequest` |
 | `PaymentSucceeded` | Gateway confirms success | `PaymentResponse` |
+| `PaymentPending` | Gateway redirects to 3DS (status = pending) | `PaymentResponse` |
 | `PaymentFailed` | Gateway returns failure | `PaymentResponse` |
 | `PaymentAuthorized` | Pre-authorization succeeds | `PaymentResponse` |
 | `PaymentCaptured` | Capture succeeds | `PaymentResponse` |
 | `PaymentRefunded` | Refund succeeds | `PaymentResponse` |
 | `PaymentVoided` | Void succeeds | `PaymentResponse` |
 | `WebhookReceived` | Webhook processed | `PaymentResponse` + raw payload |
+| `CallbackUnmatched` | Callback received but no matching transaction found | `gateway` (string) + `PaymentResponse` |
 
 ```php
 use XLaravel\Payline\Events\PaymentSucceeded;
+use XLaravel\Payline\Events\PaymentPending;
+use XLaravel\Payline\Events\CallbackUnmatched;
 
 class SendPaymentConfirmation
 {
     public function handle(PaymentSucceeded $event): void
     {
         $event->payment->payable->sendConfirmationEmail();
+    }
+}
+
+// Listen for 3DS redirect
+class HandlePendingPayment
+{
+    public function handle(PaymentPending $event): void
+    {
+        // $event->response->redirectUrl is ready; store payment ID in session if needed
+    }
+}
+
+// Alert on unmatched callbacks (e.g. double delivery, wrong gateway config)
+class AlertUnmatchedCallback
+{
+    public function handle(CallbackUnmatched $event): void
+    {
+        Log::warning('Unmatched payment callback', [
+            'gateway' => $event->gateway,
+            'gateway_order_id' => $event->response->gatewayOrderId,
+        ]);
     }
 }
 ```
@@ -469,7 +496,7 @@ The `$config` array for the gateway driver is injected from `config('payline.gat
 ```php
 // config/payline.php
 return [
-    'default' => env('PAYLINE_DRIVER', 'hoppa'),
+    'default' => env('PAYLINE_DRIVER'),
 
     'gateways' => [
         'iyzico' => [
