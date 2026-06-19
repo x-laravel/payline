@@ -7,6 +7,9 @@ use XLaravel\Payline\Enums\PaymentMethod;
 
 readonly class PaymentRequest
 {
+    /**
+     * @param BasketItem[] $basketItems
+     */
     public function __construct(
         public string $reference,
         public int $amount,
@@ -23,9 +26,9 @@ readonly class PaymentRequest
         public bool $threeDs = true,
         public ?int $installments = null,
         public ?string $callbackUrl = null,
-        public ?array $basketItems = null,
-        public ?array $billingAddress = null,
-        public ?array $shippingAddress = null,
+        public array $basketItems = [],
+        public ?Address $billingAddress = null,
+        public ?Address $shippingAddress = null,
         public ?array $metadata = null,
         public ?CardProfile $cardProfile = null,
     ) {}
@@ -56,29 +59,50 @@ readonly class PaymentRequest
         );
     }
 
-    public static function fromPayable(Payable $payable, array $extra = []): self
-    {
+    /**
+     * @param BasketItem[] $basketItems
+     */
+    public static function fromPayable(
+        Payable $payable,
+        ?Card $card = null,
+        ?string $cardToken = null,
+        bool $saveCard = false,
+        bool $threeDs = true,
+        ?int $installments = null,
+        ?string $callbackUrl = null,
+        array $basketItems = [],
+        ?Address $billingAddress = null,
+        ?Address $shippingAddress = null,
+        ?array $metadata = null,
+        ?CardProfile $cardProfile = null,
+        ?string $customerEmail = null,
+        ?string $customerName = null,
+        ?string $customerPhone = null,
+        ?string $customerIp = null,
+        ?string $description = null,
+        ?PaymentMethod $method = null,
+    ): self {
         return new self(
             reference: $payable->getPayableReference(),
             amount: $payable->getPayableAmount(),
             currency: $payable->getPayableCurrency(),
-            customerEmail: $extra['customerEmail'] ?? $payable->getPayableCustomerEmail(),
-            customerName: $extra['customerName'] ?? $payable->getPayableCustomerName(),
-            customerPhone: $extra['customerPhone'] ?? null,
-            customerIp: $extra['customerIp'] ?? null,
-            description: $extra['description'] ?? $payable->getPayableDescription(),
-            method: $extra['method'] ?? null,
-            card: $extra['card'] ?? null,
-            cardToken: $extra['cardToken'] ?? null,
-            saveCard: $extra['saveCard'] ?? false,
-            threeDs: $extra['threeDs'] ?? true,
-            installments: $extra['installments'] ?? null,
-            callbackUrl: $extra['callbackUrl'] ?? null,
-            basketItems: $extra['basketItems'] ?? null,
-            billingAddress: $extra['billingAddress'] ?? null,
-            shippingAddress: $extra['shippingAddress'] ?? null,
-            metadata: $extra['metadata'] ?? null,
-            cardProfile: $extra['cardProfile'] ?? null,
+            customerEmail: $customerEmail ?? $payable->getPayableCustomerEmail(),
+            customerName: $customerName ?? $payable->getPayableCustomerName(),
+            customerPhone: $customerPhone,
+            customerIp: $customerIp,
+            description: $description ?? $payable->getPayableDescription(),
+            method: $method,
+            card: $card,
+            cardToken: $cardToken,
+            saveCard: $saveCard,
+            threeDs: $threeDs,
+            installments: $installments,
+            callbackUrl: $callbackUrl,
+            basketItems: $basketItems,
+            billingAddress: $billingAddress,
+            shippingAddress: $shippingAddress,
+            metadata: $metadata,
+            cardProfile: $cardProfile,
         );
     }
 }

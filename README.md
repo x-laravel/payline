@@ -86,16 +86,17 @@ PAYLINE_DRIVER=iyzico
 use XLaravel\Payline\DTOs\Card;
 use XLaravel\Payline\DTOs\PaymentRequest;
 
-$data = PaymentRequest::fromPayable($order, [
-    'card' => new Card(
-        number: '4111111111111111',
+$data = PaymentRequest::fromPayable(
+    payable: $order,
+    card: new Card(
         holderName: 'John Doe',
+        number: '4111111111111111',
         expiryMonth: '12',
         expiryYear: '2030',
         cvv: '123',
     ),
-    'customerIp' => $request->ip(),
-]);
+    customerIp: $request->ip(),
+);
 
 $response = $order->pay('iyzico')->charge($data);
 ```
@@ -212,8 +213,9 @@ use XLaravel\Payline\DTOs\CardProfile;
 use XLaravel\Payline\Enums\CardType;
 
 // Option A: manual profile
-$data = PaymentRequest::fromPayable($order, [
-    'card' => new Card(
+$data = PaymentRequest::fromPayable(
+    payable: $order,
+    card: new Card(
         holderName: 'Ali Veli',
         number: '4111111111111111',
         expiryMonth: '12',
@@ -221,14 +223,15 @@ $data = PaymentRequest::fromPayable($order, [
         cvv: '123',
         profile: new CardProfile('Bonus', CardType::Credit),
     ),
-    'installments' => 3,
-]);
+    installments: 3,
+);
 
 // Option B: BIN lookup (see BIN Lookup section)
-$data = PaymentRequest::fromPayable($order, [
-    'card' => (new Card(holderName: 'Ali Veli', number: '4111111111111111', ...))->resolveProfile(),
-    'installments' => 3,
-]);
+$data = PaymentRequest::fromPayable(
+    payable: $order,
+    card: (new Card(holderName: 'Ali Veli', number: '4111111111111111', ...))->resolveProfile(),
+    installments: 3,
+);
 
 // Auto-route — cheapest gateway is selected automatically
 $order->pay()->charge($data);
@@ -266,16 +269,17 @@ PAYLINE_BIN_LOOKUP_DRIVER=iyzico
 use XLaravel\Payline\DTOs\Card;
 use XLaravel\Payline\DTOs\PaymentRequest;
 
-$data = PaymentRequest::fromPayable($order, [
-    'card' => (new Card(
+$data = PaymentRequest::fromPayable(
+    payable: $order,
+    card: (new Card(
         holderName: 'Ali Veli',
         number: '4111111111111111',
         expiryMonth: '12',
         expiryYear: '2030',
         cvv: '123',
     ))->resolveProfile(),
-    'installments' => 3,
-]);
+    installments: 3,
+);
 
 // CardProfile resolved — GatewayRouter picks the cheapest gateway automatically
 $order->pay()->charge($data);
@@ -332,6 +336,37 @@ $order->amountPaid()          // int — total charged (in kuruş)
 $order->lastPayment()         // latest Payment model, or null
 $order->pay()                 // start a payment (auto-route via GatewayRouter)
 $order->pay('iyzico')         // start a payment (explicit driver)
+```
+
+## Address & BasketItem
+
+Use typed DTOs instead of plain arrays for billing/shipping addresses and basket items:
+
+```php
+use XLaravel\Payline\DTOs\Address;
+use XLaravel\Payline\DTOs\BasketItem;
+
+$data = PaymentRequest::fromPayable(
+    payable: $order,
+    card: $card,
+    billingAddress: new Address(
+        name: 'John Doe',
+        line1: '123 Main St',
+        city: 'Istanbul',
+        country: 'TR',
+        zipCode: '34000',
+    ),
+    shippingAddress: new Address(
+        name: 'John Doe',
+        line1: '456 Other St',
+        city: 'Ankara',
+        country: 'TR',
+    ),
+    basketItems: [
+        new BasketItem(id: 'SKU-1', name: 'T-Shirt', category: 'Clothing', price: 15000, quantity: 2),
+        new BasketItem(id: 'SKU-2', name: 'Shipping', category: 'Delivery', price: 1000),
+    ],
+);
 ```
 
 ## PaymentResponse
