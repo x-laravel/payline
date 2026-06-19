@@ -183,17 +183,48 @@ class TransactionRecorder
         /** @var class-string<Payment> $model */
         $model = $this->paymentModel;
 
-        $payment = $model::find($paymentId);
-        if (! $payment) {
-            return;
-        }
-
         $updates = ['status' => $status->value];
 
         if ($status->isFinal()) {
             $updates['completed_at'] = now();
         }
 
-        $payment->update($updates);
+        // Single atomic UPDATE — prevents backwards transitions under concurrent
+        // webhooks/callbacks. A more advanced status cannot be overwritten by a
+        // less advanced one (e.g. successful → failed is blocked).
+        $model::where('id', $paymentId)
+            ->whereNotIn('status', $this->statusesBlockedBy($status))
+            ->update($updates);
+    }
+
+    private function statusesBlockedBy(TransactionStatus $incoming): array
+    {
+        return match ($incoming) {
+            // These cannot overwrite any finalized positive outcome
+            TransactionStatus::Initiated,
+            TransactionStatus::Pending,
+            TransactionStatus::Authorized,
+            TransactionStatus::Failed,
+            TransactionStatus::Expired => [
+                TransactionStatus::Successful->value,
+                TransactionStatus::PartiallyRefunded->value,
+                TransactionStatus::Refunded->value,
+                TransactionStatus::Voided->value,
+            ],
+            // Successful cannot overwrite a refund or void
+            TransactionStatus::Successful => [
+                TransactionStatus::PartiallyRefunded->value,
+                TransactionStatus::Refunded->value,
+                TransactionStatus::Voided->value,
+            ],
+            // PartiallyRefunded cannot overwrite a full refund or void
+            TransactionStatus::PartiallyRefunded => [
+                TransactionStatus::Refunded->value,
+                TransactionStatus::Voided->value,
+            ],
+            // Refunded and Voided are terminal — no restrictions on reaching them
+            TransactionStatus::Refunded,
+            TransactionStatus::Voided => [],
+        };
     }
 }
