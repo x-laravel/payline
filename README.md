@@ -229,7 +229,7 @@ $data = PaymentRequest::fromPayable(
 // Option B: BIN lookup (see BIN Lookup section)
 $data = PaymentRequest::fromPayable(
     payable: $order,
-    card: (new Card(holderName: 'Ali Veli', number: '4111111111111111', ...))->resolveProfile(),
+    card: (new Card(holderName: 'Ali Veli', number: '4111111111111111', ...))->resolveProfile(app(\XLaravel\Payline\BinLookupManager::class)),
     installments: 3,
 );
 
@@ -266,18 +266,21 @@ PAYLINE_BIN_LOOKUP_DRIVER=iyzico
 ### Usage
 
 ```php
+use XLaravel\Payline\BinLookupManager;
 use XLaravel\Payline\DTOs\Card;
 use XLaravel\Payline\DTOs\PaymentRequest;
 
+$card = new Card(
+    holderName: 'Ali Veli',
+    number: '4111111111111111',
+    expiryMonth: '12',
+    expiryYear: '2030',
+    cvv: '123',
+);
+
 $data = PaymentRequest::fromPayable(
     payable: $order,
-    card: (new Card(
-        holderName: 'Ali Veli',
-        number: '4111111111111111',
-        expiryMonth: '12',
-        expiryYear: '2030',
-        cvv: '123',
-    ))->resolveProfile(),
+    card: $card->resolveProfile(app(BinLookupManager::class)),
     installments: 3,
 );
 

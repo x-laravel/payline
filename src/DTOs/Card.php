@@ -2,6 +2,8 @@
 
 namespace XLaravel\Payline\DTOs;
 
+use XLaravel\Payline\BinLookupManager;
+
 readonly class Card
 {
     public function __construct(
@@ -13,9 +15,9 @@ readonly class Card
         public ?CardProfile $profile = null,
     ) {}
 
-    public function resolveProfile(): self
+    public function resolveProfile(BinLookupManager $manager): self
     {
-        $profile = app(\XLaravel\Payline\BinLookupManager::class)->lookup($this->number);
+        $profile = $manager->lookup($this->number);
         return $profile !== null ? $this->withProfile($profile) : $this;
     }
 

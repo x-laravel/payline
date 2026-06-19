@@ -35,28 +35,17 @@ readonly class PaymentRequest
 
     public function withCallbackUrl(string $url): self
     {
-        return new self(
-            reference: $this->reference,
-            amount: $this->amount,
-            currency: $this->currency,
-            customerEmail: $this->customerEmail,
-            customerName: $this->customerName,
-            customerPhone: $this->customerPhone,
-            customerIp: $this->customerIp,
-            description: $this->description,
-            method: $this->method,
-            card: $this->card,
-            cardToken: $this->cardToken,
-            saveCard: $this->saveCard,
-            threeDs: $this->threeDs,
-            installments: $this->installments,
-            callbackUrl: $url,
-            basketItems: $this->basketItems,
-            billingAddress: $this->billingAddress,
-            shippingAddress: $this->shippingAddress,
-            metadata: $this->metadata,
-            cardProfile: $this->cardProfile,
-        );
+        return $this->with(['callbackUrl' => $url]);
+    }
+
+    private function with(array $overrides): self
+    {
+        $args = [];
+        foreach ((new \ReflectionClass($this))->getProperties() as $prop) {
+            $name = $prop->getName();
+            $args[$name] = array_key_exists($name, $overrides) ? $overrides[$name] : $this->{$name};
+        }
+        return new self(...$args);
     }
 
     /**
