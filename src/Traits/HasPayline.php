@@ -9,10 +9,10 @@ use XLaravel\Payline\PaylineManager;
 use XLaravel\Payline\PendingPayment;
 
 /**
- * Order, Invoice, User gibi herhangi bir Eloquent modele eklenebilir.
- * Laravel Cashier Billable trait'i ile isim çakışması yoktur.
+ * Can be added to any Eloquent model such as Order, Invoice, User.
+ * No naming conflict with Laravel Cashier's Billable trait.
  *
- * Örnek:
+ * Example:
  *   class User extends Model { use Billable, HasPayline; }
  *   class Order extends Model implements Payable { use HasPayline; }
  */
@@ -52,7 +52,7 @@ trait HasPayline
     }
 
     /**
-     * $order->pay()           → GatewayRouter en ucuz gateway'i seçer (PaymentRequest::$cardProfile gerekli)
+     * $order->pay()           → GatewayRouter selects the cheapest gateway (PaymentRequest::$cardProfile required)
      * $order->pay('iyzico')   → explicit driver
      */
     public function pay(?string $driver = null): PendingPayment
@@ -71,8 +71,8 @@ trait HasPayline
         return $pending;
     }
 
-    // --- Payable interface için default uygulamalar ---
-    // Model bunları override etmezse kullanılır.
+    // --- Default implementations for the Payable interface ---
+    // Used when the model does not override these methods.
 
     public function getPayableCurrency(): string
     {

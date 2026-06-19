@@ -45,5 +45,4 @@ readonly class PaymentResponse
     {
         return $this->redirectUrl !== null || $this->redirectForm !== null;
     }
-
 }

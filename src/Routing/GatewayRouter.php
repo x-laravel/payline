@@ -15,10 +15,10 @@ class GatewayRouter
     }
 
     /**
-     * Verilen kart profili ve taksit sayısı için tüm gateway'leri komisyon oranına
-     * göre artan sırayla döndürür: ['hoppa' => 2.0300, 'qnb' => 2.9200]
+     * Returns all gateways sorted ascending by commission rate for the given card profile
+     * and installment count: ['hoppa' => 2.0300, 'qnb' => 2.9200]
      *
-     * Eşleşme önceliği: card_family + card_type tam eşleşmesi > kısmi > wildcard (null)
+     * Match priority: card_family + card_type exact match > partial > wildcard (null)
      */
     public function rankedFor(CardProfile $profile, int $installments = 1): array
     {
@@ -44,8 +44,8 @@ class GatewayRouter
     }
 
     /**
-     * En düşük komisyonlu gateway adını döndürür.
-     * DB'de eşleşen kayıt yoksa null döner.
+     * Returns the name of the gateway with the lowest commission rate.
+     * Returns null if no matching record exists in the database.
      */
     public function cheapestFor(CardProfile $profile, int $installments = 1): ?string
     {

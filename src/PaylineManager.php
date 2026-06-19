@@ -22,8 +22,8 @@ class PaylineManager extends Manager
     }
 
     /**
-     * Raw gateway döndürür. Transaction kaydı yapılmaz.
-     * Driver paket geliştirme ve ileri düzey kullanım içindir.
+     * Returns the raw gateway instance. No transaction recording occurs.
+     * Intended for driver package development and advanced usage.
      *
      * Payline::driver('iyzico') → Gateway
      */
@@ -35,7 +35,7 @@ class PaylineManager extends Manager
     }
 
     /**
-     * Transaction kaydı + event'ler etkin PendingPayment döndürür.
+     * Returns a PendingPayment with transaction recording and events enabled.
      *
      * Payline::via('iyzico')->charge($data)
      */
@@ -49,8 +49,8 @@ class PaylineManager extends Manager
     }
 
     /**
-     * Auto-route modunda PendingPayment döndürür.
-     * Gateway, pay($data) çağrısında PaymentRequest::$cardProfile üzerinden çözülür.
+     * Returns a PendingPayment in auto-route mode.
+     * The gateway is resolved via PaymentRequest::$cardProfile at charge() time.
      *
      * Payline::viaAuto()->charge($data)
      */
@@ -65,7 +65,7 @@ class PaylineManager extends Manager
     }
 
     /**
-     * Facade kısayolu: Payline::cheapestFor($profile, 3)
+     * Facade shortcut: Payline::cheapestFor($profile, 3)
      */
     public function cheapestFor(CardProfile $profile, int $installments = 1): ?string
     {
@@ -73,7 +73,7 @@ class PaylineManager extends Manager
     }
 
     /**
-     * Payable model ile başlayan fluent zincir.
+     * Starts a fluent chain scoped to a Payable model.
      *
      * Payline::for($order)->via('iyzico')->charge($data)
      */
@@ -83,8 +83,8 @@ class PaylineManager extends Manager
     }
 
     /**
-     * Driver factory'ye config'i otomatik inject eder.
-     * Driver paketleri ($app, array $config) imzasını kullanmalıdır.
+     * Automatically injects config into the driver factory.
+     * Driver packages must use the ($app, array $config) signature.
      */
     protected function callCustomCreator($driver): Gateway
     {

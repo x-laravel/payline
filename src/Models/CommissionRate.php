@@ -22,5 +22,4 @@ class CommissionRate extends Model
             'blocking_days' => 'integer',
         ];
     }
-
 }

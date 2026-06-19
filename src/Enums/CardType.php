@@ -11,9 +11,9 @@ enum CardType: string
     public function label(): string
     {
         return match ($this) {
-            self::Credit => 'Kredi Kartı',
-            self::Debit => 'Banka Kartı',
-            self::ForeignCredit => 'Yabancı Kredi Kartı',
+            self::Credit => 'Credit Card',
+            self::Debit => 'Debit Card',
+            self::ForeignCredit => 'Foreign Credit Card',
         };
     }
 }
