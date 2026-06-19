@@ -14,10 +14,12 @@ use XLaravel\Payline\DTOs\RefundData;
 use XLaravel\Payline\DTOs\VoidData;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Enums\TransactionType;
+use XLaravel\Payline\Events\CallbackUnmatched;
 use XLaravel\Payline\Events\PaymentAuthorized;
 use XLaravel\Payline\Events\PaymentCaptured;
 use XLaravel\Payline\Events\PaymentFailed;
 use XLaravel\Payline\Events\PaymentInitiated;
+use XLaravel\Payline\Events\PaymentPending;
 use XLaravel\Payline\Events\PaymentRefunded;
 use XLaravel\Payline\Events\PaymentSucceeded;
 use XLaravel\Payline\Events\PaymentVoided;
@@ -180,10 +182,13 @@ class PendingPayment
         $tx = $this->recorder->findTransactionByGatewayOrderId($response->gatewayOrderId ?? '')
             ?? $this->recorder->findTransactionByGatewayTransactionId($response->gatewayTransactionId ?? '');
 
-        if ($tx) {
-            $this->recorder->updateTransaction($tx, $response);
-            $this->dispatchStatusEvent($response, $tx->payment, $tx);
+        if (! $tx) {
+            event(new CallbackUnmatched($gateway->getName(), $response));
+            return $response;
         }
+
+        $this->recorder->updateTransaction($tx, $response);
+        $this->dispatchStatusEvent($response, $tx->payment, $tx);
 
         return $response;
     }
@@ -210,9 +215,11 @@ class PendingPayment
         }
 
         match ($response->type) {
-            TransactionType::Payment => $response->isSuccessful()
-                ? event(new PaymentSucceeded($payment, $tx, $response))
-                : null,
+            TransactionType::Payment => match (true) {
+                $response->isSuccessful() => event(new PaymentSucceeded($payment, $tx, $response)),
+                $response->isPending() => event(new PaymentPending($payment, $tx, $response)),
+                default => null,
+            },
             TransactionType::Authorization => $response->status === TransactionStatus::Authorized
                 ? event(new PaymentAuthorized($payment, $tx, $response))
                 : null,
