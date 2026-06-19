@@ -15,6 +15,15 @@ use XLaravel\Payline\Models\Transaction;
 
 class TransactionRecorder
 {
+    private string $paymentModel;
+    private string $transactionModel;
+
+    public function __construct()
+    {
+        $this->paymentModel = config('payline.payment_model', Payment::class);
+        $this->transactionModel = config('payline.transaction_model', Transaction::class);
+    }
+
     public function createPayment(
         string $gateway,
         PaymentRequest $data,
@@ -22,7 +31,7 @@ class TransactionRecorder
         ?object $owner = null,
     ): Payment {
         /** @var class-string<Payment> $model */
-        $model = config('payline.payment_model', Payment::class);
+        $model = $this->paymentModel;
 
         return $model::create([
             'gateway' => $gateway,
@@ -46,7 +55,7 @@ class TransactionRecorder
         int $attempt = 1,
     ): Transaction {
         /** @var class-string<Transaction> $model */
-        $model = config('payline.transaction_model', Transaction::class);
+        $model = $this->transactionModel;
 
         return $model::create([
             'payment_id' => $payment->id,
@@ -65,7 +74,7 @@ class TransactionRecorder
         Transaction $parent,
     ): Transaction {
         /** @var class-string<Transaction> $model */
-        $model = config('payline.transaction_model', Transaction::class);
+        $model = $this->transactionModel;
 
         return $model::create([
             'payment_id' => $payment->id,
@@ -86,7 +95,7 @@ class TransactionRecorder
         Transaction $parent,
     ): Transaction {
         /** @var class-string<Transaction> $model */
-        $model = config('payline.transaction_model', Transaction::class);
+        $model = $this->transactionModel;
 
         return $model::create([
             'payment_id' => $payment->id,
@@ -107,7 +116,7 @@ class TransactionRecorder
         Transaction $parent,
     ): Transaction {
         /** @var class-string<Transaction> $model */
-        $model = config('payline.transaction_model', Transaction::class);
+        $model = $this->transactionModel;
 
         return $model::create([
             'payment_id' => $payment->id,
@@ -156,7 +165,7 @@ class TransactionRecorder
     public function findTransactionByGatewayTransactionId(string $id): ?Transaction
     {
         /** @var class-string<Transaction> $model */
-        $model = config('payline.transaction_model', Transaction::class);
+        $model = $this->transactionModel;
 
         return $model::where('gateway_transaction_id', $id)->latest()->first();
     }
@@ -164,7 +173,7 @@ class TransactionRecorder
     public function findTransactionByGatewayOrderId(string $id): ?Transaction
     {
         /** @var class-string<Transaction> $model */
-        $model = config('payline.transaction_model', Transaction::class);
+        $model = $this->transactionModel;
 
         return $model::where('gateway_order_id', $id)->latest()->first();
     }
@@ -172,7 +181,7 @@ class TransactionRecorder
     private function syncPaymentStatus(string $paymentId, TransactionStatus $status): void
     {
         /** @var class-string<Payment> $model */
-        $model = config('payline.payment_model', Payment::class);
+        $model = $this->paymentModel;
 
         $payment = $model::find($paymentId);
         if (! $payment) {

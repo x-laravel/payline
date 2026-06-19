@@ -59,7 +59,7 @@ class PendingPayment
             return $this->manager->driver();
         }
 
-        throw new LogicException('Gateway çözümlenemedi: driver belirtilmedi ve cardProfile eksik.');
+        throw new LogicException('Gateway could not be resolved: no driver specified and cardProfile is missing.');
     }
 
     public function for(Payable $payable): static
@@ -131,7 +131,7 @@ class PendingPayment
     public function capture(CaptureData $data, Payment $payment, Transaction $parent): PaymentResponse
     {
         $gateway = $this->gateway ?? $this->manager?->driver()
-            ?? throw new LogicException('Capture için driver belirtilmeli.');
+            ?? throw new LogicException('A driver must be specified for capture.');
 
         $tx = $this->recorder->createCaptureTransaction(
             payment: $payment,
@@ -145,7 +145,7 @@ class PendingPayment
     public function refund(RefundData $data, Payment $payment, Transaction $parent): PaymentResponse
     {
         $gateway = $this->gateway ?? $this->manager?->driver()
-            ?? throw new LogicException('Refund için driver belirtilmeli.');
+            ?? throw new LogicException('A driver must be specified for refund.');
 
         $tx = $this->recorder->createRefundTransaction(
             payment: $payment,
@@ -159,7 +159,7 @@ class PendingPayment
     public function void(VoidData $data, Payment $payment, Transaction $parent): PaymentResponse
     {
         $gateway = $this->gateway ?? $this->manager?->driver()
-            ?? throw new LogicException('Void için driver belirtilmeli.');
+            ?? throw new LogicException('A driver must be specified for void.');
 
         $tx = $this->recorder->createVoidTransaction(
             payment: $payment,
@@ -173,7 +173,7 @@ class PendingPayment
     public function handleCallback(CallbackData $data): PaymentResponse
     {
         $gateway = $this->gateway ?? $this->manager?->driver()
-            ?? throw new LogicException('Callback için driver belirtilmeli.');
+            ?? throw new LogicException('A driver must be specified for callback handling.');
 
         $response = $gateway->handleCallback($data);
 

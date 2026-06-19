@@ -1,26 +1,9 @@
 <?php
 
 return [
-    'default' => env('PAYLINE_DRIVER', 'hoppa'),
+    'default' => env('PAYLINE_DRIVER'),
 
     'gateways' => [
-        'hoppa' => [
-            'merchant_id' => env('HOPPA_MERCHANT_ID'),
-            'secret_key' => env('HOPPA_SECRET_KEY'),
-            'mode' => env('HOPPA_MODE', 'sandbox'),
-            'callback_success_url' => env('HOPPA_CALLBACK_SUCCESS_URL'),
-            'callback_failure_url' => env('HOPPA_CALLBACK_FAILURE_URL'),
-        ],
-
-        'qnb' => [
-            'merchant_id' => env('QNB_MERCHANT_ID'),
-            'terminal_id' => env('QNB_TERMINAL_ID'),
-            'secret_key' => env('QNB_SECRET_KEY'),
-            'mode' => env('QNB_MODE', 'test'),
-            'callback_success_url' => env('QNB_CALLBACK_SUCCESS_URL'),
-            'callback_failure_url' => env('QNB_CALLBACK_FAILURE_URL'),
-        ],
-
         'iyzico' => [
             'api_key' => env('IYZICO_API_KEY'),
             'secret_key' => env('IYZICO_SECRET_KEY'),

@@ -12,7 +12,13 @@ class PaylineManager extends Manager
 {
     public function getDefaultDriver(): string
     {
-        return $this->config->get('payline.default', 'hoppa');
+        $driver = $this->config->get('payline.default');
+
+        if (! $driver) {
+            throw new \RuntimeException('No default Payline gateway configured. Set PAYLINE_DRIVER or payline.default in config.');
+        }
+
+        return $driver;
     }
 
     /**
