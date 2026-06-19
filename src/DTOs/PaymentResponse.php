@@ -23,6 +23,7 @@ readonly class PaymentResponse
         public ?string $errorCode = null,
         public ?string $errorMessage = null,
         public ?array $metadata = null,
+        public ?string $eventType = null,
     ) {}
 
     public function isSuccessful(): bool

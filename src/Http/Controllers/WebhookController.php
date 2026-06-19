@@ -34,8 +34,7 @@ class WebhookController extends Controller
 
         try {
             if (! $gatewayInstance->verifyWebhook($request->all(), $signature)) {
-                $log->markFailed('Invalid webhook signature');
-                abort(403, 'Invalid webhook signature');
+                throw new WebhookSignatureException('Invalid webhook signature');
             }
 
             $log->update(['status' => WebhookStatus::Processing]);
@@ -43,7 +42,7 @@ class WebhookController extends Controller
             $response = $gatewayInstance->parseWebhook($request->all());
 
             $log->update([
-                'event_type' => $response->gatewayResponseCode,
+                'event_type' => $response->eventType,
                 'gateway_event_id' => $response->gatewayTransactionId,
             ]);
 
