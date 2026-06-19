@@ -403,7 +403,8 @@ Most events carry a `Payment` and `Transaction` model. Exceptions are noted belo
 | `PaymentInitiated` | Before the gateway call | `PaymentRequest` |
 | `PaymentSucceeded` | Gateway confirms success | `PaymentResponse` |
 | `PaymentPending` | Gateway redirects to 3DS (status = pending) | `PaymentResponse` |
-| `PaymentFailed` | Gateway returns failure | `PaymentResponse` |
+| `PaymentFailed` | Gateway returns a failure response | `PaymentResponse` |
+| `PaymentErrored` | Gateway call throws an exception (network, timeout, parse error) | `Throwable` |
 | `PaymentAuthorized` | Pre-authorization succeeds | `PaymentResponse` |
 | `PaymentCaptured` | Capture succeeds | `PaymentResponse` |
 | `PaymentRefunded` | Refund succeeds | `PaymentResponse` |

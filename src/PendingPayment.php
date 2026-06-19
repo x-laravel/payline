@@ -17,6 +17,7 @@ use XLaravel\Payline\Enums\TransactionType;
 use XLaravel\Payline\Events\CallbackUnmatched;
 use XLaravel\Payline\Events\PaymentAuthorized;
 use XLaravel\Payline\Events\PaymentCaptured;
+use XLaravel\Payline\Events\PaymentErrored;
 use XLaravel\Payline\Events\PaymentFailed;
 use XLaravel\Payline\Events\PaymentInitiated;
 use XLaravel\Payline\Events\PaymentPending;
@@ -202,12 +203,12 @@ class PendingPayment
             return $response;
         } catch (Throwable $e) {
             $this->recorder->failTransaction($tx, $e->getMessage());
-            event(new PaymentFailed($payment, $tx, null, $e->getMessage()));
+            event(new PaymentErrored($payment, $tx, $e));
             throw $e;
         }
     }
 
-    private function dispatchStatusEvent(PaymentResponse $response, ?Payment $payment, Transaction $tx): void
+    private function dispatchStatusEvent(PaymentResponse $response, Payment $payment, Transaction $tx): void
     {
         if ($response->isFailure()) {
             event(new PaymentFailed($payment, $tx, $response));
