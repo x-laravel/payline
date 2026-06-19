@@ -13,6 +13,12 @@ readonly class Card
         public ?CardProfile $profile = null,
     ) {}
 
+    public function resolveProfile(): self
+    {
+        $profile = app(\XLaravel\Payline\BinLookupManager::class)->lookup($this->number);
+        return $profile !== null ? $this->withProfile($profile) : $this;
+    }
+
     public function withProfile(CardProfile $profile): self
     {
         return new self(

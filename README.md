@@ -223,10 +223,8 @@ $data = PaymentData::fromPayable($order, [
 ]);
 
 // Option B: BIN lookup (see BIN Lookup section)
-$card = new Card(holderName: 'Ali Veli', number: '4111111111111111', ...);
-$profile = app(\XLaravel\Payline\BinLookupManager::class)->lookup($card->number);
 $data = PaymentData::fromPayable($order, [
-    'card' => $profile ? $card->withProfile($profile) : $card,
+    'card' => (new Card(holderName: 'Ali Veli', number: '4111111111111111', ...))->resolveProfile(),
     'installments' => 3,
 ]);
 
@@ -263,26 +261,17 @@ PAYLINE_BIN_LOOKUP_DRIVER=iyzico
 ### Usage
 
 ```php
-use XLaravel\Payline\BinLookupManager;
 use XLaravel\Payline\DTOs\Card;
 use XLaravel\Payline\DTOs\PaymentData;
 
-$card = new Card(
-    holderName: 'Ali Veli',
-    number: '4111111111111111',
-    expiryMonth: '12',
-    expiryYear: '2030',
-    cvv: '123',
-);
-
-$profile = app(BinLookupManager::class)->lookup($card->number);
-
-if ($profile !== null) {
-    $card = $card->withProfile($profile);
-}
-
 $data = PaymentData::fromPayable($order, [
-    'card' => $card,
+    'card' => (new Card(
+        holderName: 'Ali Veli',
+        number: '4111111111111111',
+        expiryMonth: '12',
+        expiryYear: '2030',
+        cvv: '123',
+    ))->resolveProfile(),
     'installments' => 3,
 ]);
 
@@ -290,7 +279,7 @@ $data = PaymentData::fromPayable($order, [
 $order->pay()->charge($data);
 ```
 
-If the BIN lookup driver returns `null` (unknown card or no driver configured), the default gateway is used and routing is skipped.
+`resolveProfile()` calls the active BIN lookup driver internally and returns the card with its profile set. If the driver returns `null` (unknown card or no driver configured), the card is returned unchanged and the default gateway is used.
 
 ### Writing a BIN Lookup Driver
 
