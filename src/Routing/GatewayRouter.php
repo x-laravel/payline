@@ -7,6 +7,13 @@ use XLaravel\Payline\Models\CommissionRate;
 
 class GatewayRouter
 {
+    private string $model;
+
+    public function __construct()
+    {
+        $this->model = config('payline.commission_rate_model', CommissionRate::class);
+    }
+
     /**
      * Verilen kart profili ve taksit sayısı için tüm gateway'leri komisyon oranına
      * göre artan sırayla döndürür: ['hoppa' => 2.0300, 'qnb' => 2.9200]
@@ -15,7 +22,7 @@ class GatewayRouter
      */
     public function rankedFor(CardProfile $profile, int $installments = 1): array
     {
-        $model = config('payline.commission_rate_model', CommissionRate::class);
+        $model = $this->model;
 
         $rates = $model::query()
             ->where(fn ($q) => $q->where('card_family', $profile->family)->orWhereNull('card_family'))
