@@ -45,8 +45,4 @@ readonly class PaymentResponse
         return $this->redirectUrl !== null || $this->redirectForm !== null;
     }
 
-    public function requiresAction(): bool
-    {
-        return $this->requiresRedirect();
-    }
 }
