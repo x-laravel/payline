@@ -384,12 +384,15 @@ All gateway operations return a unified `PaymentResponse` DTO:
 | `gatewayTransactionId` | `?string` | |
 | `gatewayOrderId` | `?string` | |
 | `gatewayAuthCode` | `?string` | |
+| `gatewayResponseCode` | `?string` | Raw response code from the gateway |
+| `gatewayResponseMessage` | `?string` | Raw response message from the gateway |
 | `amount` | `int` | kuruş |
 | `currency` | `string` | |
 | `redirectUrl` | `?string` | 3DS redirect target |
 | `redirectForm` | `?string` | POST form HTML |
 | `errorCode` | `?string` | |
 | `errorMessage` | `?string` | |
+| `eventType` | `?string` | Webhook event type (e.g. `payment.captured`, `refund.created`) — set by `parseWebhook()` |
 | `metadata` | `?array` | Gateway-specific extras |
 
 Helper methods: `isSuccessful()`, `isPending()`, `isFailure()`, `requiresRedirect()`.
@@ -536,7 +539,7 @@ class MyGatewayDriver implements Gateway
     public function void(VoidData $data): PaymentResponse { ... }
     public function handleCallback(CallbackData $data): PaymentResponse { ... }
     public function verifyWebhook(array $payload, string $signature): bool { ... }
-    public function parseWebhook(array $payload): PaymentResponse { ... }
+    public function parseWebhook(array $payload): PaymentResponse { ... } // set eventType (e.g. 'payment.captured')
     public function supportedMethods(): array { return [PaymentMethod::CreditCard]; }
     public function getName(): string { return 'my-gateway'; }
 }
