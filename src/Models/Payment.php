@@ -58,9 +58,11 @@ class Payment extends Model
         return $this->hasOne(
             config('payline.transaction_model', Transaction::class),
             'payment_id',
-        )->ofMany([], fn ($q) => $q
-            ->where('status', TransactionStatus::Successful->value)
-            ->where('type', TransactionType::Payment->value)
+        )->ofMany(
+            ['id' => 'max'],
+            fn ($q) => $q
+                ->where('status', TransactionStatus::Successful->value)
+                ->where('type', TransactionType::Payment->value)
         );
     }
 
