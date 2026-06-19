@@ -182,8 +182,12 @@ class PendingPayment
 
         $response = $gateway->handleCallback($data);
 
-        $tx = $this->recorder->findTransactionByGatewayOrderId($response->gatewayOrderId ?? '')
-            ?? $this->recorder->findTransactionByGatewayTransactionId($response->gatewayTransactionId ?? '');
+        $tx = ($response->gatewayOrderId
+                ? $this->recorder->findTransactionByGatewayOrderId($response->gatewayOrderId)
+                : null)
+            ?? ($response->gatewayTransactionId
+                ? $this->recorder->findTransactionByGatewayTransactionId($response->gatewayTransactionId)
+                : null);
 
         if (! $tx) {
             event(new CallbackUnmatched($gateway->getName(), $response));
