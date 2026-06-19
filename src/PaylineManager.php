@@ -31,7 +31,7 @@ class PaylineManager extends Manager
     /**
      * Transaction kaydı + event'ler etkin PendingPayment döndürür.
      *
-     * Payline::via('iyzico')->pay($data)
+     * Payline::via('iyzico')->charge($data)
      */
     public function via(?string $driver = null): PendingPayment
     {
@@ -46,7 +46,7 @@ class PaylineManager extends Manager
      * Auto-route modunda PendingPayment döndürür.
      * Gateway, pay($data) çağrısında PaymentData::$cardProfile üzerinden çözülür.
      *
-     * Payline::viaAuto()->pay($data)
+     * Payline::viaAuto()->charge($data)
      */
     public function viaAuto(): PendingPayment
     {
@@ -68,7 +68,7 @@ class PaylineManager extends Manager
     /**
      * Payable model ile başlayan fluent zincir.
      *
-     * Payline::for($order)->via('iyzico')->pay($data)
+     * Payline::for($order)->via('iyzico')->charge($data)
      */
     public function for(Payable $payable): PendingPaymentBuilder
     {

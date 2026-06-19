@@ -97,7 +97,7 @@ $data = PaymentData::fromPayable($order, [
     'customerIp' => $request->ip(),
 ]);
 
-$response = $order->pay('iyzico')->pay($data);
+$response = $order->pay('iyzico')->charge($data);
 ```
 
 Or using the facade:
@@ -105,7 +105,7 @@ Or using the facade:
 ```php
 use XLaravel\Payline\Facades\Payline;
 
-$response = Payline::for($order)->via('iyzico')->pay($data);
+$response = Payline::for($order)->via('iyzico')->charge($data);
 ```
 
 ### Handling the Response
@@ -231,10 +231,10 @@ $data = PaymentData::fromPayable($order, [
 ]);
 
 // Auto-route — cheapest gateway is selected automatically
-$order->pay()->pay($data);
+$order->pay()->charge($data);
 
 // Explicit driver — skip routing
-$order->pay('iyzico')->pay($data);
+$order->pay('iyzico')->charge($data);
 
 // Query directly
 Payline::cheapestFor(new CardProfile('Bonus', CardType::Credit), installments: 3);
@@ -287,7 +287,7 @@ $data = PaymentData::fromPayable($order, [
 ]);
 
 // CardProfile resolved — GatewayRouter picks the cheapest gateway automatically
-$order->pay()->pay($data);
+$order->pay()->charge($data);
 ```
 
 If the BIN lookup driver returns `null` (unknown card or no driver configured), the default gateway is used and routing is skipped.

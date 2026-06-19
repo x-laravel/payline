@@ -74,7 +74,7 @@ class PendingPayment
         return $this;
     }
 
-    public function pay(PaymentData $data): PaymentResponse
+    public function charge(PaymentData $data): PaymentResponse
     {
         $gateway = $this->resolveGateway($data);
 
