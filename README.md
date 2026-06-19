@@ -593,6 +593,13 @@ return [
         'webhook_middleware' => [],             // applied to webhook route only (e.g. ['throttle:60,1'])
     ],
 
+    'models' => [
+        'payment'         => XLaravel\Payline\Models\Payment::class,
+        'transaction'     => XLaravel\Payline\Models\Transaction::class,
+        'webhook_log'     => XLaravel\Payline\Models\WebhookLog::class,
+        'commission_rate' => XLaravel\Payline\Models\CommissionRate::class,
+    ],
+
     'database' => [
         'connection' => env('PAYLINE_DB_CONNECTION', env('DB_CONNECTION', 'sqlite')),
     ],

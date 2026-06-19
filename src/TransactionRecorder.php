@@ -20,8 +20,8 @@ class TransactionRecorder
 
     public function __construct()
     {
-        $this->paymentModel = config('payline.payment_model', Payment::class);
-        $this->transactionModel = config('payline.transaction_model', Transaction::class);
+        $this->paymentModel = config('payline.models.payment', Payment::class);
+        $this->transactionModel = config('payline.models.transaction', Transaction::class);
     }
 
     public function createPayment(

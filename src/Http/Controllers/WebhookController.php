@@ -24,7 +24,7 @@ class WebhookController extends Controller
         $gatewayInstance = $manager->driver($gateway);
 
         /** @var class-string<WebhookLog> $logModel */
-        $logModel = config('payline.webhook_log_model', WebhookLog::class);
+        $logModel = config('payline.models.webhook_log', WebhookLog::class);
 
         $log = $logModel::create([
             'gateway' => $gateway,

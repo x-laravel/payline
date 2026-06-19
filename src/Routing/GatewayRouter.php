@@ -11,7 +11,7 @@ class GatewayRouter
 
     public function __construct()
     {
-        $this->model = config('payline.commission_rate_model', CommissionRate::class);
+        $this->model = config('payline.models.commission_rate', CommissionRate::class);
     }
 
     /**

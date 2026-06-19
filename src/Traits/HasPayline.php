@@ -21,7 +21,7 @@ trait HasPayline
     public function payments(): MorphMany
     {
         return $this->morphMany(
-            config('payline.payment_model', Payment::class),
+            config('payline.models.payment', Payment::class),
             'payable',
         );
     }

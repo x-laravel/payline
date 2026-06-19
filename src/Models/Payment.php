@@ -41,7 +41,7 @@ class Payment extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(
-            config('payline.transaction_model', Transaction::class),
+            config('payline.models.transaction', Transaction::class),
             'payment_id',
         );
     }
@@ -49,7 +49,7 @@ class Payment extends Model
     public function latestTransaction(): HasOne
     {
         return $this->hasOne(
-            config('payline.transaction_model', Transaction::class),
+            config('payline.models.transaction', Transaction::class),
             'payment_id',
         )->latestOfMany();
     }
@@ -57,7 +57,7 @@ class Payment extends Model
     public function successfulTransaction(): HasOne
     {
         return $this->hasOne(
-            config('payline.transaction_model', Transaction::class),
+            config('payline.models.transaction', Transaction::class),
             'payment_id',
         )->ofMany(
             ['id' => 'max'],

@@ -32,7 +32,7 @@ class Transaction extends Model
     public function payment(): BelongsTo
     {
         return $this->belongsTo(
-            config('payline.payment_model', Payment::class),
+            config('payline.models.payment', Payment::class),
             'payment_id',
         );
     }
