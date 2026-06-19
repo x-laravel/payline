@@ -5,6 +5,7 @@ namespace XLaravel\Payline\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Enums\TransactionType;
@@ -44,17 +45,23 @@ class Payment extends Model
         );
     }
 
-    public function latestTransaction(): ?Transaction
+    public function latestTransaction(): HasOne
     {
-        return $this->transactions()->latest()->first();
+        return $this->hasOne(
+            config('payline.transaction_model', Transaction::class),
+            'payment_id',
+        )->latestOfMany();
     }
 
-    public function successfulTransaction(): ?Transaction
+    public function successfulTransaction(): HasOne
     {
-        return $this->transactions()
+        return $this->hasOne(
+            config('payline.transaction_model', Transaction::class),
+            'payment_id',
+        )->ofMany([], fn ($q) => $q
             ->where('status', TransactionStatus::Successful->value)
             ->where('type', TransactionType::Payment->value)
-            ->first();
+        );
     }
 
     public function refunds(): HasMany
