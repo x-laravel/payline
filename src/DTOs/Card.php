@@ -31,6 +31,18 @@ readonly class Card
         );
     }
 
+    public function __debugInfo(): array
+    {
+        return [
+            'holderName' => $this->holderName,
+            'number' => $this->maskedNumber(),
+            'expiryMonth' => $this->expiryMonth,
+            'expiryYear' => $this->expiryYear,
+            'cvv' => '***',
+            'profile' => $this->profile,
+        ];
+    }
+
     public function lastFour(): string
     {
         return substr($this->number, -4);
