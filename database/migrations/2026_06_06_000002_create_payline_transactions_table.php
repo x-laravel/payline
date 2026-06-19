@@ -6,6 +6,11 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    public function getConnection(): ?string
+    {
+        return config('payline.database.connection');
+    }
+
     public function up(): void
     {
         Schema::create('payline_transactions', function (Blueprint $table) {

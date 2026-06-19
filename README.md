@@ -592,8 +592,22 @@ return [
         'middleware'         => ['web'],        // applied to both callback and webhook routes
         'webhook_middleware' => [],             // applied to webhook route only (e.g. ['throttle:60,1'])
     ],
+
+    'database' => [
+        'connection' => env('PAYLINE_DB_CONNECTION', env('DB_CONNECTION', 'sqlite')),
+    ],
 ];
 ```
+
+### Dedicated Database Connection
+
+Set `PAYLINE_DB_CONNECTION` in your `.env` to store all Payline tables (payments, transactions, webhook logs, commission rates) in a separate database:
+
+```env
+PAYLINE_DB_CONNECTION=payments
+```
+
+The named connection must exist in `config/database.php`. When `PAYLINE_DB_CONNECTION` is not set, the value falls back to `DB_CONNECTION` (the application's default connection).
 
 ## Database
 

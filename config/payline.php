@@ -36,4 +36,8 @@ return [
     'webhook_log_model' => XLaravel\Payline\Models\WebhookLog::class,
 
     'commission_rate_model' => XLaravel\Payline\Models\CommissionRate::class,
+
+    'database' => [
+        'connection' => env('PAYLINE_DB_CONNECTION', env('DB_CONNECTION', 'sqlite')),
+    ],
 ];

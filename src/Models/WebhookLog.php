@@ -4,11 +4,12 @@ namespace XLaravel\Payline\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use XLaravel\Payline\Concerns\UsesPaylineConnection;
 use XLaravel\Payline\Enums\WebhookStatus;
 
 class WebhookLog extends Model
 {
-    use HasUlids;
+    use HasUlids, UsesPaylineConnection;
 
     protected $table = 'payline_webhook_logs';
 

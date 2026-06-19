@@ -6,12 +6,13 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use XLaravel\Payline\Concerns\UsesPaylineConnection;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Enums\TransactionType;
 
 class Transaction extends Model
 {
-    use HasUlids;
+    use HasUlids, UsesPaylineConnection;
 
     protected $table = 'payline_transactions';
 
