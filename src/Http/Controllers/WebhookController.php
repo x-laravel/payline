@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use XLaravel\Payline\DTOs\CallbackData;
+use XLaravel\Payline\Enums\WebhookStatus;
 use XLaravel\Payline\Events\WebhookReceived;
 use XLaravel\Payline\Exceptions\WebhookSignatureException;
 use XLaravel\Payline\Models\WebhookLog;
@@ -28,7 +29,7 @@ class WebhookController extends Controller
         $log = $logModel::create([
             'gateway' => $gateway,
             'payload' => $request->all(),
-            'status' => 'received',
+            'status' => WebhookStatus::Received,
         ]);
 
         try {
@@ -37,7 +38,7 @@ class WebhookController extends Controller
                 abort(403, 'Invalid webhook signature');
             }
 
-            $log->update(['status' => 'processing']);
+            $log->update(['status' => WebhookStatus::Processing]);
 
             $response = $gatewayInstance->parseWebhook($request->all());
 

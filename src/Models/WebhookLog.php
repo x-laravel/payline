@@ -4,6 +4,7 @@ namespace XLaravel\Payline\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use XLaravel\Payline\Enums\WebhookStatus;
 
 class WebhookLog extends Model
 {
@@ -16,6 +17,7 @@ class WebhookLog extends Model
     protected function casts(): array
     {
         return [
+            'status' => WebhookStatus::class,
             'payload' => 'array',
             'processed_at' => 'datetime',
         ];
@@ -24,7 +26,7 @@ class WebhookLog extends Model
     public function markProcessed(): void
     {
         $this->update([
-            'status' => 'processed',
+            'status' => WebhookStatus::Processed,
             'processed_at' => now(),
         ]);
     }
@@ -32,7 +34,7 @@ class WebhookLog extends Model
     public function markFailed(string $exception): void
     {
         $this->update([
-            'status' => 'failed',
+            'status' => WebhookStatus::Failed,
             'exception' => $exception,
         ]);
     }
