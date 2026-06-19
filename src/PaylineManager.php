@@ -60,6 +60,7 @@ class PaylineManager extends Manager
             gateway: null,
             recorder: $this->container->make(TransactionRecorder::class),
             manager: $this,
+            router: $this->container->make(GatewayRouter::class),
         );
     }
 

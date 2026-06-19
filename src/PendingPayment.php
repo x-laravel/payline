@@ -37,6 +37,7 @@ class PendingPayment
         protected readonly ?Gateway $gateway,
         protected readonly TransactionRecorder $recorder,
         protected readonly ?PaylineManager $manager = null,
+        protected readonly ?GatewayRouter $router = null,
     ) {}
 
     protected function resolveGateway(PaymentRequest $data): Gateway
@@ -47,8 +48,8 @@ class PendingPayment
 
         $cardProfile = $data->card?->profile ?? $data->cardProfile;
 
-        if ($this->manager !== null && $cardProfile !== null) {
-            $driver = app(GatewayRouter::class)->cheapestFor(
+        if ($this->router !== null && $cardProfile !== null) {
+            $driver = $this->router->cheapestFor(
                 $cardProfile,
                 $data->installments ?? 1,
             );
