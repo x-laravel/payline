@@ -39,10 +39,12 @@ class PaymentOperationValidator
         $this->assertGatewayTransaction($data->gatewayTransactionId, $parent);
         $this->assertCurrency($data->currency, $payment);
 
-        if ($payment->status !== PaymentStatus::Authorized
+        if (! in_array($payment->status, [PaymentStatus::Authorized, PaymentStatus::PartiallyCaptured], true)
             || $parent->type !== TransactionType::Authorization
             || $parent->status !== TransactionStatus::Authorized) {
-            throw new InvalidPaymentOperationException('Only an authorized payment can be captured.');
+            throw new InvalidPaymentOperationException(
+                'Only an authorized or partially captured payment can be captured.',
+            );
         }
     }
 

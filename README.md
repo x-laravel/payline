@@ -197,6 +197,15 @@ $void = Payline::payment($payment)->void(
 );
 ```
 
+An authorization can be captured in parts. While the captured total stays below the payment amount the payment is `partially_captured`, and it becomes `successful` once the captures add up to the full amount:
+
+```php
+Payline::payment($payment)->capture(amount: 4000);  // partially_captured
+Payline::payment($payment)->capture(amount: 6000);  // successful
+```
+
+Refunds follow the capture that produced them, so a refund cannot exceed the amount that capture collected.
+
 ## Gateway selection and routing
 
 Select a gateway explicitly:
@@ -298,6 +307,7 @@ $payment->refunds();
 $payment->wasSuccessful();
 $payment->hasOutstandingAmount();
 $payment->isPending();
+$payment->capturedAmount();
 $payment->totalRefunded();
 $payment->remainingRefundable();
 

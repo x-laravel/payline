@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use XLaravel\Payline\Enums\PaymentStatus;
 use XLaravel\Payline\Facades\Payline;
 use XLaravel\Payline\Enums\TransactionStatus;
+use XLaravel\Payline\Enums\TransactionType;
 use XLaravel\Payline\Models\Payment;
 use XLaravel\Payline\PaylineManager;
 use XLaravel\Payline\PendingPayment;
@@ -42,12 +43,16 @@ trait HasPayline
 
     public function amountPaid(): int
     {
-        return (int) $this->successfulPayments()->sum('amount');
+        return $this->successfulPayments()
+            ->withSum($this->capturedSum(), 'amount')
+            ->get()
+            ->sum(fn (Payment $payment) => (int) $payment->captured_amount);
     }
 
     public function amountRefunded(): int
     {
-        return (int) $this->successfulPayments()
+        return $this->successfulPayments()
+            ->withSum($this->capturedSum(), 'amount')
             ->withSum(
                 ['refunds as refunded_amount' => fn ($query) => $query->where(
                     'status',
@@ -56,12 +61,22 @@ trait HasPayline
                 'amount',
             )
             ->get()
-            ->sum(fn (Payment $payment) => min((int) $payment->amount, (int) $payment->refunded_amount));
+            ->sum(fn (Payment $payment) => min(
+                (int) $payment->captured_amount,
+                (int) $payment->refunded_amount,
+            ));
     }
 
     public function amountNet(): int
     {
         return $this->amountPaid() - $this->amountRefunded();
+    }
+
+    private function capturedSum(): array
+    {
+        return ['transactions as captured_amount' => fn ($query) => $query
+            ->whereIn('type', [TransactionType::Payment->value, TransactionType::Capture->value])
+            ->where('status', TransactionStatus::Successful->value)];
     }
 
     public function lastPayment(): ?Payment

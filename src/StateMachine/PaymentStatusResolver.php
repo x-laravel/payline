@@ -14,11 +14,26 @@ class PaymentStatusResolver
         return match ($type) {
             TransactionType::Payment => $this->afterPayment($status),
             TransactionType::Authorization => $this->afterAuthorization($status),
-            TransactionType::Capture => $this->afterCapture($status),
             TransactionType::Void => $this->afterVoid($status),
+            TransactionType::Capture => throw new LogicException(
+                'Capture status must be resolved with forCapture().',
+            ),
             TransactionType::Refund => throw new LogicException(
                 'Refund status must be resolved with forRefund().',
             ),
+        };
+    }
+
+    public function forCapture(TransactionStatus $status, int $captured, int $paymentAmount): ?PaymentStatus
+    {
+        return match ($status) {
+            TransactionStatus::Successful => $captured >= $paymentAmount
+                ? PaymentStatus::Paid
+                : PaymentStatus::PartiallyCaptured,
+            TransactionStatus::Pending => PaymentStatus::Pending,
+            TransactionStatus::Expired => PaymentStatus::Expired,
+            TransactionStatus::Unknown => PaymentStatus::Unknown,
+            default => null,
         };
     }
 
@@ -54,17 +69,6 @@ class PaymentStatusResolver
             TransactionStatus::Pending => PaymentStatus::Pending,
             TransactionStatus::Authorized => PaymentStatus::Authorized,
             TransactionStatus::Failed => PaymentStatus::Failed,
-            TransactionStatus::Expired => PaymentStatus::Expired,
-            TransactionStatus::Unknown => PaymentStatus::Unknown,
-            default => null,
-        };
-    }
-
-    private function afterCapture(TransactionStatus $status): ?PaymentStatus
-    {
-        return match ($status) {
-            TransactionStatus::Successful => PaymentStatus::Paid,
-            TransactionStatus::Pending => PaymentStatus::Pending,
             TransactionStatus::Expired => PaymentStatus::Expired,
             TransactionStatus::Unknown => PaymentStatus::Unknown,
             default => null,

@@ -117,6 +117,14 @@ class Payment extends Model
         return $this->status->isPending();
     }
 
+    public function capturedAmount(): int
+    {
+        return (int) $this->transactions()
+            ->whereIn('type', [TransactionType::Payment->value, TransactionType::Capture->value])
+            ->where('status', TransactionStatus::Successful->value)
+            ->sum('amount');
+    }
+
     public function totalRefunded(): int
     {
         return (int) $this->refunds()
@@ -126,7 +134,7 @@ class Payment extends Model
 
     public function remainingRefundable(): int
     {
-        return max(0, $this->amount - $this->totalRefunded());
+        return max(0, $this->capturedAmount() - $this->totalRefunded());
     }
 
     public function nextAttemptNumber(): int

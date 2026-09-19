@@ -7,6 +7,7 @@ enum PaymentStatus: string
     case Initiated = 'initiated';
     case Pending = 'pending';
     case Authorized = 'authorized';
+    case PartiallyCaptured = 'partially_captured';
     case Paid = 'successful';
     case PartiallyRefunded = 'partially_refunded';
     case Refunded = 'refunded';
@@ -53,8 +54,15 @@ enum PaymentStatus: string
                 self::Unknown,
             ], true),
             self::Authorized => in_array($to, [
+                self::PartiallyCaptured,
                 self::Paid,
                 self::Voided,
+                self::Unknown,
+            ], true),
+            self::PartiallyCaptured => in_array($to, [
+                self::Paid,
+                self::PartiallyRefunded,
+                self::Refunded,
                 self::Unknown,
             ], true),
             self::Paid => in_array($to, [
@@ -80,13 +88,13 @@ enum PaymentStatus: string
     /** @return array<int, self> */
     public static function successful(): array
     {
-        return [self::Paid, self::PartiallyRefunded, self::Refunded];
+        return [self::PartiallyCaptured, self::Paid, self::PartiallyRefunded, self::Refunded];
     }
 
     /** @return array<int, self> */
     public static function outstanding(): array
     {
-        return [self::Paid, self::PartiallyRefunded];
+        return [self::PartiallyCaptured, self::Paid, self::PartiallyRefunded];
     }
 
     /** @return array<int, self> */

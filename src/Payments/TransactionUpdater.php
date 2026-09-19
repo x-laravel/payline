@@ -120,20 +120,32 @@ class TransactionUpdater
 
     private function paymentStatusFor(Payment $payment, Transaction $transaction): ?PaymentStatus
     {
-        if ($transaction->type === TransactionType::Refund) {
-            return $this->statuses->forRefund(
+        return match ($transaction->type) {
+            TransactionType::Refund => $this->statuses->forRefund(
                 $transaction->status,
                 $this->refundedTotal($payment),
                 (int) $payment->amount,
-            );
-        }
-
-        return $this->statuses->forTransaction($transaction->type, $transaction->status);
+            ),
+            TransactionType::Capture => $this->statuses->forCapture(
+                $transaction->status,
+                $this->capturedTotal($payment),
+                (int) $payment->amount,
+            ),
+            default => $this->statuses->forTransaction($transaction->type, $transaction->status),
+        };
     }
 
     private function refundedTotal(Payment $payment): int
     {
         return (int) $payment->refunds()
+            ->where('status', TransactionStatus::Successful->value)
+            ->sum('amount');
+    }
+
+    private function capturedTotal(Payment $payment): int
+    {
+        return (int) $payment->transactions()
+            ->where('type', TransactionType::Capture->value)
             ->where('status', TransactionStatus::Successful->value)
             ->sum('amount');
     }
