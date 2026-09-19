@@ -2,6 +2,7 @@
 
 namespace XLaravel\Payline;
 
+use XLaravel\Payline\Concerns\BuildsPaymentRequest;
 use XLaravel\Payline\Contracts\Gateway;
 use XLaravel\Payline\Contracts\Payable;
 use XLaravel\Payline\DTOs\PaymentRequest;
@@ -14,6 +15,8 @@ use XLaravel\Payline\Payments\TransactionRunner;
 
 class PendingPayment
 {
+    use BuildsPaymentRequest;
+
     protected ?Payable $payable = null;
 
     protected ?object $owner = null;
@@ -41,14 +44,14 @@ class PendingPayment
         return $this;
     }
 
-    public function charge(PaymentRequest $data): PaymentResponse
+    public function charge(?PaymentRequest $data = null): PaymentResponse
     {
-        return $this->start($data, TransactionType::Payment);
+        return $this->start($data ?? $this->toPaymentRequest($this->payable), TransactionType::Payment);
     }
 
-    public function authorize(PaymentRequest $data): PaymentResponse
+    public function authorize(?PaymentRequest $data = null): PaymentResponse
     {
-        return $this->start($data, TransactionType::Authorization);
+        return $this->start($data ?? $this->toPaymentRequest($this->payable), TransactionType::Authorization);
     }
 
     private function start(PaymentRequest $data, TransactionType $type): PaymentResponse

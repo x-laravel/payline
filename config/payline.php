@@ -3,6 +3,8 @@
 return [
     'default' => env('PAYLINE_DRIVER'),
 
+    'currency' => env('PAYLINE_CURRENCY', 'TRY'),
+
     'gateways' => [
         'iyzico' => [
             'api_key' => env('IYZICO_API_KEY'),

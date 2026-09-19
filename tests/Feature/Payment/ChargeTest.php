@@ -3,6 +3,7 @@
 namespace XLaravel\Payline\Tests\Feature\Payment;
 
 use Illuminate\Support\Facades\Event;
+use LogicException;
 use XLaravel\Payline\DTOs\PaymentRequest;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Enums\TransactionType;
@@ -102,5 +103,66 @@ class ChargeTest extends TestCase
 
         $this->assertCount(1, $order->payments);
         $this->assertTrue($order->payments->first()->wasSuccessful());
+    }
+
+    public function test_charge_without_request_derives_fields_from_payable(): void
+    {
+        $order = Order::create([
+            'reference' => 'ORD-007',
+            'amount' => 15000,
+            'currency' => 'TRY',
+        ]);
+
+        $order->pay('fake')
+            ->customerIp('127.0.0.1')
+            ->withoutThreeDs()
+            ->idempotencyKey('order:007:payment')
+            ->charge();
+
+        $this->assertDatabaseHas('payline_payments', [
+            'payable_type' => Order::class,
+            'payable_id' => $order->id,
+            'reference' => 'ORD-007',
+            'amount' => 15000,
+            'idempotency_key' => 'order:007:payment',
+            'status' => TransactionStatus::Successful->value,
+        ]);
+    }
+
+    public function test_explicit_amount_overrides_the_payable_total(): void
+    {
+        $order = Order::create([
+            'reference' => 'ORD-008',
+            'amount' => 15000,
+            'currency' => 'TRY',
+        ]);
+
+        $order->pay('fake')->amount(5000)->charge();
+
+        $this->assertDatabaseHas('payline_payments', [
+            'reference' => 'ORD-008',
+            'amount' => 5000,
+        ]);
+    }
+
+    public function test_charge_without_payable_uses_explicit_values(): void
+    {
+        Payline::via('fake')
+            ->reference('INV-009')
+            ->amount(2500)
+            ->charge();
+
+        $this->assertDatabaseHas('payline_payments', [
+            'reference' => 'INV-009',
+            'amount' => 2500,
+            'currency' => 'TRY',
+        ]);
+    }
+
+    public function test_charge_without_payable_or_amount_throws(): void
+    {
+        $this->expectException(LogicException::class);
+
+        Payline::via('fake')->reference('INV-010')->charge();
     }
 }

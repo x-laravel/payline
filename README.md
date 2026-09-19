@@ -77,25 +77,26 @@ class Order extends Model implements Payable
 
 ```php
 use XLaravel\Payline\DTOs\Card;
-use XLaravel\Payline\DTOs\PaymentRequest;
-use XLaravel\Payline\Enums\PaymentMethod;
 
-$paymentRequest = PaymentRequest::fromPayable(
-    payable: $order,
-    method: PaymentMethod::CreditCard,
-    card: new Card(
-        holderName: 'Jane Doe',
-        number: '4111111111111111',
-        expiryMonth: '12',
-        expiryYear: '2030',
-        cvv: '123',
-    ),
-    customerIp: $request->ip(),
-    threeDs: true,
-    idempotencyKey: (string) str()->uuid(),
+$card = new Card(
+    holderName: 'Jane Doe',
+    number: '4111111111111111',
+    expiryMonth: '12',
+    expiryYear: '2030',
+    cvv: '123',
 );
 
-$response = $order->pay('iyzico')->charge($paymentRequest);
+$response = $order->pay('iyzico')
+    ->card($card)
+    ->customerIp($request->ip())
+    ->idempotencyKey((string) str()->uuid())
+    ->charge();
+```
+
+Reference, amount, currency, customer name, customer email, and description come from the payable. Each one can be overridden on the chain, which also covers charging less than the payable total:
+
+```php
+$order->pay('iyzico')->card($card)->amount(5000)->charge();
 ```
 
 The facade exposes the same recorded workflow:
@@ -105,7 +106,30 @@ use XLaravel\Payline\Facades\Payline;
 
 $response = Payline::for($order)
     ->via('iyzico')
-    ->charge($paymentRequest);
+    ->card($card)
+    ->charge();
+```
+
+Without a payable, supply the values the request needs:
+
+```php
+Payline::via('iyzico')
+    ->reference('INV-2026-1')
+    ->amount(10000)
+    ->card($card)
+    ->charge();
+```
+
+The chain accepts `reference()`, `amount()`, `currency()`, `card()`, `cardToken()`, `saveCard()`, `method()`, `installments()`, `threeDs()`, `withoutThreeDs()`, `customerEmail()`, `customerName()`, `customerPhone()`, `customerIp()`, `description()`, `callbackUrl()`, `basketItems()`, `billingAddress()`, `shippingAddress()`, `metadata()`, `cardProfile()`, and `idempotencyKey()`.
+
+`charge()` and `authorize()` also accept a `PaymentRequest` the application builds itself:
+
+```php
+use XLaravel\Payline\DTOs\PaymentRequest;
+
+$response = $order->pay('iyzico')->charge(
+    PaymentRequest::fromPayable(payable: $order, card: $card),
+);
 ```
 
 `Payline::driver('iyzico')` returns the raw gateway. Raw calls bypass Payline's persistence, validation, idempotency, and events, so application code should normally use `via()`, `for()`, or `pay()`.
@@ -138,11 +162,10 @@ if ($response->isFailure()) {
 Use a stable key for every retryable operation:
 
 ```php
-$paymentRequest = PaymentRequest::fromPayable(
-    payable: $order,
-    card: $card,
-    idempotencyKey: "order:{$order->getKey()}:payment",
-);
+$order->pay('iyzico')
+    ->card($card)
+    ->idempotencyKey("order:{$order->getKey()}:payment")
+    ->charge();
 ```
 
 Repeating an operation with the same key and payload returns the recorded result without calling the provider again. Reusing a key with a different fingerprinted payload throws `IdempotencyConflictException`. Capture, refund, and void operations accept independent idempotency keys.
@@ -150,7 +173,7 @@ Repeating an operation with the same key and payload returns the recorded result
 ## Authorization and follow-up operations
 
 ```php
-$response = $order->pay('iyzico')->authorize($paymentRequest);
+$response = $order->pay('iyzico')->card($card)->authorize();
 ```
 
 Use the recorded `Payment` for subsequent operations. Payline automatically uses the original gateway and rejects invalid state transitions or excessive amounts:
@@ -179,8 +202,8 @@ $void = Payline::payment($payment)->void(
 Select a gateway explicitly:
 
 ```php
-$order->pay('iyzico')->charge($paymentRequest);
-Payline::via('iyzico')->charge($paymentRequest);
+$order->pay('iyzico')->card($card)->charge();
+Payline::via('iyzico')->card($card)->reference('INV-1')->amount(10000)->charge();
 ```
 
 Omit the gateway to use commission routing. Provide a card profile directly or resolve it through a registered BIN lookup driver:
@@ -190,13 +213,10 @@ use XLaravel\Payline\BinLookupManager;
 
 $card = $card->resolveProfile(app(BinLookupManager::class));
 
-$paymentRequest = PaymentRequest::fromPayable(
-    payable: $order,
-    card: $card,
-    installments: 3,
-);
-
-$response = $order->pay()->charge($paymentRequest);
+$response = $order->pay()
+    ->card($card)
+    ->installments(3)
+    ->charge();
 ```
 
 Commission rates are stored in `payline_commission_rates`. Exact card family and type matches take precedence over wildcard rows. If no suitable rate exists, Payline uses the default gateway.
@@ -387,6 +407,8 @@ Important `config/payline.php` options:
 return [
     'default' => env('PAYLINE_DRIVER'),
 
+    'currency' => env('PAYLINE_CURRENCY', 'TRY'),
+
     'routes' => [
         'enabled' => true,
         'prefix' => 'payline',
@@ -410,7 +432,7 @@ return [
 ];
 ```
 
-Set `PAYLINE_DB_CONNECTION` to use a dedicated Laravel database connection. Disable storage fields the application does not need.
+Set `PAYLINE_DB_CONNECTION` to use a dedicated Laravel database connection. Disable storage fields the application does not need. `payline.currency` applies only when a charge has neither a payable nor an explicit `currency()`.
 
 Payline never stores the complete card number or CVV. Optional card storage is limited to BIN, last four digits, and cardholder name. `Card` masks sensitive fields in debug and JSON output.
 
