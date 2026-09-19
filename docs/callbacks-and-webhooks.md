@@ -4,6 +4,7 @@
 - [Registered Routes](#registered-routes)
 - [The Callback Path](#the-callback-path)
 - [Redirect Destinations](#redirect-destinations)
+- [Leaving the Frame](#leaving-the-frame)
 - [The Webhook Path](#the-webhook-path)
 - [Deduplication](#deduplication)
 - [Payload Storage and Redaction](#payload-storage-and-redaction)
@@ -14,7 +15,7 @@
 
 A 3D Secure payment finishes in the customer's browser, not in the request that started it. The provider redirects the customer back with the result, and reports later state changes on a server to server webhook. Payline accepts both and funnels them into the same recording logic.
 
-The difference is trust and shape. A callback arrives in the customer's browser and ends in a redirect; a webhook arrives from the provider, is deduplicated, logged, and answered with an empty response.
+The difference is trust and shape. A callback arrives in the customer's browser and ends by sending the customer on; a webhook arrives from the provider, is deduplicated, logged, and answered with an empty response.
 
 ## Registered Routes
 
@@ -70,6 +71,16 @@ $this->app->bind(CallbackRedirectResolver::class, OrderCallbackRedirects::class)
 ```
 
 The resolver receives the gateway name and the `CallbackResult`, so it can read the matched transaction and its payment.
+
+## Leaving the Frame
+
+Providers commonly render their 3D Secure step inside an iframe on the checkout page, and the return lands in that same frame. A redirect answered there navigates the frame, so the customer keeps looking at the checkout page with the result hidden inside it.
+
+Payline therefore answers the callback with a small page that moves the top window to the destination. When the callback was not framed the top window is the only window, so the same page behaves exactly like a redirect. A `<noscript>` link covers a browser with scripting off.
+
+Set `payline.routes.callback_breakout` to `false` to answer with a plain redirect instead.
+
+The status, payment id and transaction id are flashed to the session either way. Treat them as a convenience: the callback is a cross site POST, so a browser that withholds the session cookie on it leaves the flash unreachable. Anything that must happen belongs in a listener for the lifecycle events, which fire on the recorded status change regardless of the browser.
 
 ## The Webhook Path
 

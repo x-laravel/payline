@@ -44,6 +44,7 @@ Each entry under `gateways` is passed to the driver factory as its configuration
 | `routes.prefix` | `string` | `payline` | URI prefix for both routes |
 | `routes.middleware` | `array` | `['web']` | Middleware for both routes |
 | `routes.webhook_middleware` | `array` | `['throttle:60,1']` | Additional middleware for the webhook route |
+| `routes.callback_breakout` | `bool` | `true` | Sends the customer to the destination in the top window instead of answering with a redirect |
 
 CSRF verification is removed from both routes. The `web` group is removed from the webhook route.
 

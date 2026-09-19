@@ -24,6 +24,7 @@ return [
         'prefix' => 'payline',
         'middleware' => ['web'],
         'webhook_middleware' => ['throttle:60,1'],
+        'callback_breakout' => true,
     ],
 
     'bin_lookup' => [
