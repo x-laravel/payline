@@ -18,7 +18,8 @@ return new class extends Migration
 
             $table->string('gateway', 50);
             $table->string('event_type')->nullable();
-            $table->string('gateway_event_id')->nullable();
+            $table->string('gateway_event_id');
+            $table->char('payload_hash', 64);
             $table->json('payload');
             $table->string('status', 30)->default('received');
             $table->text('exception')->nullable();
@@ -26,7 +27,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['gateway', 'status']);
-            $table->index(['gateway', 'gateway_event_id']);
+            $table->unique(['gateway', 'gateway_event_id']);
+            $table->index(['gateway', 'payload_hash']);
         });
     }
 

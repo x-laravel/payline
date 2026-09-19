@@ -32,6 +32,18 @@ class WebhookLog extends Model
         ]);
     }
 
+    public function markProcessing(array $payload, string $payloadHash, ?string $eventType): void
+    {
+        $this->update([
+            'event_type' => $eventType,
+            'payload_hash' => $payloadHash,
+            'payload' => $payload,
+            'status' => WebhookStatus::Processing,
+            'exception' => null,
+            'processed_at' => null,
+        ]);
+    }
+
     public function markFailed(string $exception): void
     {
         $this->update([

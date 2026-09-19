@@ -2,50 +2,46 @@
 
 [![Tests](https://github.com/x-laravel/payline/actions/workflows/tests.yml/badge.svg)](https://github.com/x-laravel/payline/actions/workflows/tests.yml)
 [![PHP](https://img.shields.io/badge/PHP-8.3%2B-blue)](https://www.php.net)
-[![Laravel](https://img.shields.io/badge/Laravel-11%20|%2012%20|%2013-red)](https://laravel.com)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE.md)
+[![Laravel](https://img.shields.io/badge/Laravel-12%20%7C%2013-red)](https://laravel.com)
+[![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/license/MIT)
 
-A modern, DTO-based Laravel payment gateway abstraction layer. Driver packages for individual gateways (hoppa, iyzico, qnb-vpos) extend this core package.
+Payline is a reusable payment orchestration layer for Laravel. Gateway packages implement small, operation-specific contracts while applications receive one consistent API for payments, authorization, capture, refund, void, 3DS callbacks, webhooks, idempotency, routing, and reconciliation.
 
-## How It Works
-
-- Implement the `Payable` interface on any model (Order, Invoice, etc.) to make it payable
-- Add the `HasPayline` trait to get payment relationships and a `pay()` shortcut
-- Every gateway operation automatically creates a `Payment` + `Transaction` record in the database
-- 3DS callbacks and server-to-server webhooks are handled via built-in routes
-- Laravel Events are dispatched on every status change
-- Driver packages register themselves via `extend()` — one line, no core changes needed
-- BIN lookup resolves card family and type automatically, enabling commission-based auto-routing
+Every recorded operation creates or updates a `Payment` and `Transaction`, validates the state transition, and dispatches Laravel events.
 
 ## Requirements
 
-- PHP ^8.3
-- Laravel ^12.0 | ^13.0
-- At least one driver package (`x-laravel/payline-hoppa`, `x-laravel/payline-iyzico`, etc.)
+- PHP 8.3 or newer
+- Laravel 12 or 13
+- A Payline gateway driver
+
+Amounts are integers in the currency's minor unit. For example, `10000` represents TRY 100.00.
 
 ## Installation
 
 ```bash
 composer require x-laravel/payline
-```
-
-Run the migrations:
-
-```bash
 php artisan migrate
 ```
 
-Optionally publish the config:
+Publish configuration or migrations when customization is required:
 
 ```bash
 php artisan vendor:publish --tag=payline-config
+php artisan vendor:publish --tag=payline-migrations
 ```
 
-## Setup
+```env
+PAYLINE_DRIVER=iyzico
+```
 
-### 1. Implement Payable
+Verify the installation:
 
-Add the `Payable` interface and `HasPayline` trait to any model you want to charge for:
+```bash
+php artisan payline:doctor
+```
+
+## Making a model payable
 
 ```php
 use Illuminate\Database\Eloquent\Model;
@@ -56,633 +52,374 @@ class Order extends Model implements Payable
 {
     use HasPayline;
 
-    public function getPayableAmount(): int       { return $this->total; }
-    public function getPayableCurrency(): string  { return $this->currency; }
-    public function getPayableReference(): string { return $this->order_number; }
+    public function getPayableReference(): string
+    {
+        return $this->order_number;
+    }
+
+    public function getPayableAmount(): int
+    {
+        return $this->total;
+    }
 }
 ```
 
-`HasPayline` provides default implementations for `getPayableCurrency()` (`'TRY'`), `getPayableCustomerEmail()`, `getPayableCustomerName()`, and `getPayableDescription()` — override only what you need.
+`HasPayline` supplies these optional defaults:
 
-### 2. Install a Driver
+- `getPayableCurrency()`: `TRY`
+- `getPayableCustomerEmail()`: the model's `email` attribute
+- `getPayableCustomerName()`: the model's `name` attribute
+- `getPayableDescription()`: `null`
 
-Install and configure at least one gateway driver. Refer to the driver package's README for gateway-specific setup.
-
-```bash
-composer require x-laravel/payline-iyzico
-```
-
-Set the default gateway in your `.env`:
-
-```env
-PAYLINE_DRIVER=iyzico
-```
-
-## Usage
-
-### Making a Payment
+## Creating a payment
 
 ```php
 use XLaravel\Payline\DTOs\Card;
 use XLaravel\Payline\DTOs\PaymentRequest;
+use XLaravel\Payline\Enums\PaymentMethod;
 
-$data = PaymentRequest::fromPayable(
+$paymentRequest = PaymentRequest::fromPayable(
     payable: $order,
+    method: PaymentMethod::CreditCard,
     card: new Card(
-        holderName: 'John Doe',
+        holderName: 'Jane Doe',
         number: '4111111111111111',
         expiryMonth: '12',
         expiryYear: '2030',
         cvv: '123',
     ),
     customerIp: $request->ip(),
+    threeDs: true,
+    idempotencyKey: (string) str()->uuid(),
 );
 
-$response = $order->pay('iyzico')->charge($data);
+$response = $order->pay('iyzico')->charge($paymentRequest);
 ```
 
-> **Security:** `Card` implements `__debugInfo()` — CVV and the full card number are automatically masked in `var_dump()`, `dd()`, logs, and tools like Telescope. The raw values are never leaked through debug output.
-
-Or using the facade:
+The facade exposes the same recorded workflow:
 
 ```php
 use XLaravel\Payline\Facades\Payline;
 
-$response = Payline::for($order)->via('iyzico')->charge($data);
+$response = Payline::for($order)
+    ->via('iyzico')
+    ->charge($paymentRequest);
 ```
 
-### Handling the Response
+`Payline::driver('iyzico')` returns the raw gateway. Raw calls bypass Payline's persistence, validation, idempotency, and events, so application code should normally use `via()`, `for()`, or `pay()`.
+
+## Handling responses
 
 ```php
-if ($response->isSuccessful()) {
-    // Payment complete
-    $response->gatewayTransactionId;
+if ($response->requiresRedirect()) {
+    return $response->redirectForm !== null
+        ? response($response->redirectForm)
+        : redirect()->away($response->redirectUrl);
 }
 
-if ($response->requiresRedirect()) {
-    // 3DS flow
-    return redirect($response->redirectUrl);
-    // or render a POST form: $response->redirectForm
+if ($response->isApproved()) {
+    $gatewayTransactionId = $response->gatewayTransactionId;
 }
 
 if ($response->isFailure()) {
-    $response->errorCode;
-    $response->errorMessage;
+    logger()->warning('Payment failed', [
+        'code' => $response->errorCode,
+        'message' => $response->errorMessage,
+    ]);
 }
 ```
 
-### Authorization & Capture
+`PaymentResponse` provides `isSuccessful()`, `isApproved()`, `isPending()`, `isFailure()`, and `requiresRedirect()`.
+
+## Idempotency
+
+Use a stable key for every retryable operation:
 
 ```php
-// 1. Reserve funds without capturing
-$response = $order->pay()->authorize($data);
-
-// 2. Capture later
-use XLaravel\Payline\DTOs\CaptureData;
-
-$response = Payline::via()->capture(
-    new CaptureData(gatewayTransactionId: $transaction->gateway_transaction_id, amount: $transaction->amount),
-    $payment,
-    $transaction,
-);
-```
-
-### Refund & Void
-
-```php
-use XLaravel\Payline\DTOs\RefundData;
-use XLaravel\Payline\DTOs\VoidData;
-
-// Partial or full refund
-Payline::via()->refund(
-    new RefundData(gatewayTransactionId: $transaction->gateway_transaction_id, amount: 5000, reason: 'Customer request'),
-    $payment,
-    $transaction,
-);
-
-// Void an authorization (before capture)
-Payline::via()->void(
-    new VoidData(gatewayTransactionId: $transaction->gateway_transaction_id),
-    $payment,
-    $transaction,
-);
-```
-
-### Three Access Levels
-
-```php
-Payline::driver('iyzico')             // raw Gateway — no DB recording
-Payline::via('iyzico')                // PendingPayment — recording + events
-Payline::for($order)->via('iyzico')   // same, with a Payable bound
-$order->pay('iyzico')                 // explicit driver via HasPayline trait
-$order->pay()                         // auto-routing: cheapest gateway selected by GatewayRouter
-```
-
-## Commission Routing
-
-Automatically route payments to the cheapest gateway based on card family, card type, and installment count. Rates are stored in the database (`payline_commission_rates`) and can be updated without deployment.
-
-### Setup
-
-Seed commission rates for each gateway:
-
-```php
-use XLaravel\Payline\Models\CommissionRate;
-
-// Wildcard: applies to all card families / types
-CommissionRate::create(['gateway' => 'hoppa', 'card_family' => null, 'card_type' => null, 'installments' => 1, 'rate' => 2.03]);
-
-// Specific card family + type
-CommissionRate::create(['gateway' => 'qnb', 'card_family' => 'CardFinans', 'card_type' => 'credit', 'installments' => 3, 'rate' => 2.92, 'blocking_days' => 3]);
-CommissionRate::create(['gateway' => 'hoppa', 'card_family' => 'Bonus',     'card_type' => 'credit', 'installments' => 3, 'rate' => 2.03]);
-```
-
-Soft-delete a rate to deactivate it without losing history:
-
-```php
-CommissionRate::find($id)->delete();
-```
-
-### Usage
-
-`CardProfile` can be provided manually or resolved automatically via [BIN Lookup](#bin-lookup).
-
-```php
-use XLaravel\Payline\DTOs\Card;
-use XLaravel\Payline\DTOs\CardProfile;
-use XLaravel\Payline\Enums\CardType;
-
-// Option A: manual profile
-$data = PaymentRequest::fromPayable(
+$paymentRequest = PaymentRequest::fromPayable(
     payable: $order,
-    card: new Card(
-        holderName: 'Ali Veli',
-        number: '4111111111111111',
-        expiryMonth: '12',
-        expiryYear: '2030',
-        cvv: '123',
-        profile: new CardProfile('Bonus', CardType::Credit),
-    ),
-    installments: 3,
+    card: $card,
+    idempotencyKey: "order:{$order->getKey()}:payment",
 );
-
-// Option B: BIN lookup (see BIN Lookup section)
-$data = PaymentRequest::fromPayable(
-    payable: $order,
-    card: (new Card(holderName: 'Ali Veli', number: '4111111111111111', ...))->resolveProfile(app(\XLaravel\Payline\BinLookupManager::class)),
-    installments: 3,
-);
-
-// Auto-route — cheapest gateway is selected automatically
-$order->pay()->charge($data);
-
-// Explicit driver — skip routing
-$order->pay('iyzico')->charge($data);
-
-// Query directly
-Payline::cheapestFor(new CardProfile('Bonus', CardType::Credit), installments: 3);
-// → 'hoppa'
-
-// Full ranked list
-app(\XLaravel\Payline\Routing\GatewayRouter::class)
-    ->rankedFor(new CardProfile('Bonus', CardType::Credit), 3);
-// → ['hoppa' => 2.03, 'qnb' => 2.92]
 ```
 
-**Matching priority:** Rows with exact `card_family` + `card_type` take precedence over wildcards (`null`). If no row matches, the configured default gateway is used.
+Repeating an operation with the same key and payload returns the recorded result without calling the provider again. Reusing a key with a different fingerprinted payload throws `IdempotencyConflictException`. Capture, refund, and void operations accept independent idempotency keys.
 
-## BIN Lookup
+## Authorization and follow-up operations
 
-Automatically resolve a card's family and type from its BIN (first 8 digits of the card number), eliminating the need to pass `CardProfile` manually. BIN lookup drivers are provided by gateway packages — the core package ships with a `null` driver that always returns `null`.
-
-### Setup
-
-Install a driver package that supports BIN lookup and set the driver in `.env`:
-
-```env
-PAYLINE_BIN_LOOKUP_DRIVER=iyzico
+```php
+$response = $order->pay('iyzico')->authorize($paymentRequest);
 ```
 
-### Usage
+Use the recorded `Payment` for subsequent operations. Payline automatically uses the original gateway and rejects invalid state transitions or excessive amounts:
+
+```php
+use XLaravel\Payline\Facades\Payline;
+
+$capture = Payline::payment($payment)->capture(
+    amount: 10000,
+    idempotencyKey: "payment:{$payment->id}:capture:1",
+);
+
+$refund = Payline::payment($payment)->refund(
+    amount: 2500,
+    reason: 'Customer request',
+    idempotencyKey: "payment:{$payment->id}:refund:1",
+);
+
+$void = Payline::payment($payment)->void(
+    idempotencyKey: "payment:{$payment->id}:void:1",
+);
+```
+
+## Gateway selection and routing
+
+Select a gateway explicitly:
+
+```php
+$order->pay('iyzico')->charge($paymentRequest);
+Payline::via('iyzico')->charge($paymentRequest);
+```
+
+Omit the gateway to use commission routing. Provide a card profile directly or resolve it through a registered BIN lookup driver:
 
 ```php
 use XLaravel\Payline\BinLookupManager;
-use XLaravel\Payline\DTOs\Card;
-use XLaravel\Payline\DTOs\PaymentRequest;
 
-$card = new Card(
-    holderName: 'Ali Veli',
-    number: '4111111111111111',
-    expiryMonth: '12',
-    expiryYear: '2030',
-    cvv: '123',
-);
+$card = $card->resolveProfile(app(BinLookupManager::class));
 
-$data = PaymentRequest::fromPayable(
+$paymentRequest = PaymentRequest::fromPayable(
     payable: $order,
-    card: $card->resolveProfile(app(BinLookupManager::class)),
+    card: $card,
     installments: 3,
 );
 
-// CardProfile resolved — GatewayRouter picks the cheapest gateway automatically
-$order->pay()->charge($data);
+$response = $order->pay()->charge($paymentRequest);
 ```
 
-`resolveProfile()` calls the active BIN lookup driver internally and returns the card with its profile set. If the driver returns `null` (unknown card or no driver configured), the card is returned unchanged and the default gateway is used.
+Commission rates are stored in `payline_commission_rates`. Exact card family and type matches take precedence over wildcard rows. If no suitable rate exists, Payline uses the default gateway.
 
-### Writing a BIN Lookup Driver
-
-Implement `BinLookupProvider` and register it in your driver package's ServiceProvider:
-
-```php
-use XLaravel\Payline\Contracts\BinLookupProvider;
-use XLaravel\Payline\DTOs\CardProfile;
-
-class MyBinLookupProvider implements BinLookupProvider
-{
-    public function __construct(private array $config) {}
-
-    public function lookup(string $bin): ?CardProfile
-    {
-        // Call your BIN lookup API with $bin (first 8 digits, already extracted)
-        $result = $this->callApi($bin);
-
-        if (! $result) {
-            return null;
-        }
-
-        return new CardProfile($result['family'], CardType::from($result['type']));
-    }
-}
-```
-
-```php
-public function boot(): void
-{
-    $this->app->make('payline.bin_lookup')->extend('my-gateway', function ($app, array $config) {
-        return new MyBinLookupProvider($config);
-    });
-}
-```
-
-The `$config` array is automatically injected from `config('payline.bin_lookup.drivers.my-gateway')`.
-
-## HasPayline Trait
-
-Add `HasPayline` to any model to get relationships and helpers:
-
-```php
-$order->payments()            // MorphMany — all payments for this model
-$order->successfulPayments()  // only successful ones
-$order->pendingPayments()     // initiated + pending
-$order->amountPaid()          // int — total charged (in kuruş)
-$order->lastPayment()         // latest Payment model, or null
-$order->pay()                 // start a payment (auto-route via GatewayRouter)
-$order->pay('iyzico')         // start a payment (explicit driver)
-```
-
-## Address & BasketItem
-
-Use typed DTOs instead of plain arrays for billing/shipping addresses and basket items:
-
-```php
-use XLaravel\Payline\DTOs\Address;
-use XLaravel\Payline\DTOs\BasketItem;
-
-$data = PaymentRequest::fromPayable(
-    payable: $order,
-    card: $card,
-    billingAddress: new Address(
-        name: 'John Doe',
-        line1: '123 Main St',
-        city: 'Istanbul',
-        country: 'TR',
-        zipCode: '34000',
-    ),
-    shippingAddress: new Address(
-        name: 'John Doe',
-        line1: '456 Other St',
-        city: 'Ankara',
-        country: 'TR',
-    ),
-    basketItems: [
-        new BasketItem(id: 'SKU-1', name: 'T-Shirt', category: 'Clothing', price: 15000, quantity: 2),
-        new BasketItem(id: 'SKU-2', name: 'Shipping', category: 'Delivery', price: 1000),
-    ],
-);
-```
-
-## PaymentResponse
-
-All gateway operations return a unified `PaymentResponse` DTO:
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `status` | `TransactionStatus` | initiated / pending / authorized / successful / failed / refunded / voided / expired |
-| `type` | `TransactionType` | payment / authorization / capture / refund / void |
-| `gatewayName` | `string` | |
-| `gatewayTransactionId` | `?string` | |
-| `gatewayOrderId` | `?string` | |
-| `gatewayAuthCode` | `?string` | |
-| `gatewayResponseCode` | `?string` | Raw response code from the gateway |
-| `gatewayResponseMessage` | `?string` | Raw response message from the gateway |
-| `amount` | `int` | kuruş |
-| `currency` | `string` | |
-| `redirectUrl` | `?string` | 3DS redirect target |
-| `redirectForm` | `?string` | POST form HTML |
-| `errorCode` | `?string` | |
-| `errorMessage` | `?string` | |
-| `eventType` | `?string` | Webhook event type (e.g. `payment.captured`, `refund.created`) — set by `parseWebhook()` |
-| `metadata` | `?array` | Gateway-specific extras |
-
-Helper methods: `isSuccessful()`, `isPending()`, `isFailure()`, `requiresRedirect()`.
-
-## Events
-
-Most events carry a `Payment` and `Transaction` model. Exceptions are noted below.
-
-| Event | Fired when | Extra payload |
-|-------|-----------|---------------|
-| `PaymentInitiated` | Before the gateway call | `PaymentRequest` |
-| `PaymentSucceeded` | Gateway confirms success | `PaymentResponse` |
-| `PaymentPending` | Gateway redirects to 3DS (status = pending) | `PaymentResponse` |
-| `PaymentFailed` | Gateway returns a failure response | `PaymentResponse` |
-| `PaymentErrored` | Gateway call throws an exception (network, timeout, parse error) | `Throwable` |
-| `PaymentAuthorized` | Pre-authorization succeeds | `PaymentResponse` |
-| `PaymentCaptured` | Capture succeeds | `PaymentResponse` |
-| `PaymentRefunded` | Refund succeeds | `PaymentResponse` |
-| `PaymentVoided` | Void succeeds | `PaymentResponse` |
-| `WebhookReceived` | Webhook processed | `PaymentResponse` + raw payload |
-| `CallbackUnmatched` | Callback received but no matching transaction found | `gateway` (string) + `PaymentResponse` |
-
-```php
-use XLaravel\Payline\Events\PaymentSucceeded;
-use XLaravel\Payline\Events\PaymentPending;
-use XLaravel\Payline\Events\PaymentFailed;
-use XLaravel\Payline\Events\PaymentErrored;
-use XLaravel\Payline\Events\CallbackUnmatched;
-
-class SendPaymentConfirmation
-{
-    public function handle(PaymentSucceeded $event): void
-    {
-        $event->payment->payable->sendConfirmationEmail();
-    }
-}
-
-// Listen for 3DS redirect
-class HandlePendingPayment
-{
-    public function handle(PaymentPending $event): void
-    {
-        // $event->response->redirectUrl is ready; store payment ID in session if needed
-    }
-}
-
-// Gateway returned a failure response (e.g. insufficient funds, card declined)
-class HandlePaymentFailed
-{
-    public function handle(PaymentFailed $event): void
-    {
-        Log::info('Payment declined', [
-            'payment_id' => $event->payment->id,
-            'error_code' => $event->response->errorCode,
-            'error_message' => $event->response->errorMessage,
-        ]);
-    }
-}
-
-// Gateway call threw an exception (network error, timeout, parse failure)
-class HandlePaymentErrored
-{
-    public function handle(PaymentErrored $event): void
-    {
-        Log::error('Payment gateway exception', [
-            'payment_id' => $event->payment->id,
-            'error' => $event->exception->getMessage(),
-        ]);
-    }
-}
-
-// Alert on unmatched callbacks (e.g. double delivery, wrong gateway config)
-class AlertUnmatchedCallback
-{
-    public function handle(CallbackUnmatched $event): void
-    {
-        Log::warning('Unmatched payment callback', [
-            'gateway' => $event->gateway,
-            'gateway_order_id' => $event->response->gatewayOrderId,
-        ]);
-    }
-}
-```
-
-## Webhooks
-
-Payline registers a CSRF-exempt webhook route automatically:
-
-```
-POST /payline/webhooks/{gateway}
-```
-
-Point your gateway's dashboard to this URL. The controller verifies the signature, parses the payload, finds the matching transaction, updates it, and dispatches `WebhookReceived`. Signature verification is handled per-driver via `Gateway::verifyWebhook()`.
-
-## Models
-
-### Payment
-
-`payline_payments` — one record per checkout attempt.
-
-```php
-$payment->payable;                 // polymorphic — Order, Invoice, etc.
-$payment->owner;                   // polymorphic — User, etc.
-$payment->transactions();          // all gateway calls for this payment
-$payment->latestTransaction;       // HasOne — latest transaction (eager-loadable)
-$payment->successfulTransaction;   // HasOne — successful payment tx (eager-loadable)
-$payment->refunds();               // HasMany — all refund transactions
-
-$payment->isSuccessful();
-$payment->isPending();
-$payment->totalRefunded();         // int, kuruş
-$payment->remainingRefundable();   // int, kuruş
-$payment->nextAttemptNumber();
-
-// Eager load to avoid N+1
-Payment::with('latestTransaction', 'successfulTransaction')->get();
-```
-
-### Transaction
-
-`payline_transactions` — one row per gateway API call (pay, capture, refund, void, webhook update).
-
-```php
-$transaction->payment;    // BelongsTo Payment
-$transaction->parent;     // BelongsTo Transaction (refund/capture source)
-$transaction->children(); // HasMany
-```
-
-## Writing a Driver
-
-Implement `Gateway` and register it in your ServiceProvider:
+Routing also filters gateways through `GatewayCapabilities` and the classes configured in `payline.routing.policies`. A policy implements `GatewayRoutingPolicy`:
 
 ```php
 use XLaravel\Payline\Contracts\Gateway;
+use XLaravel\Payline\Contracts\GatewayRoutingPolicy;
+use XLaravel\Payline\DTOs\PaymentRequest;
+use XLaravel\Payline\Enums\TransactionType;
 
-class MyGatewayDriver implements Gateway
+class CurrencyPolicy implements GatewayRoutingPolicy
 {
-    public function __construct(private array $config) {}
-
-    public function pay(PaymentRequest $data): PaymentResponse { ... }
-    public function authorize(PaymentRequest $data): PaymentResponse { ... }
-    public function capture(CaptureData $data): PaymentResponse { ... }
-    public function refund(RefundData $data): PaymentResponse { ... }
-    public function void(VoidData $data): PaymentResponse { ... }
-    public function handleCallback(CallbackData $data): PaymentResponse { ... }
-    public function verifyWebhook(array $payload, string $signature): bool { ... }
-    public function parseWebhook(array $payload): PaymentResponse { ... } // set eventType (e.g. 'payment.captured')
-    public function supportedMethods(): array { return [PaymentMethod::CreditCard]; }
-    public function getName(): string { return 'my-gateway'; }
+    public function allows(
+        Gateway $gateway,
+        PaymentRequest $request,
+        TransactionType $operation,
+    ): bool {
+        return $request->currency === 'TRY';
+    }
 }
 ```
 
-Register in your driver package's ServiceProvider:
+```php
+'routing' => [
+    'policies' => [CurrencyPolicy::class],
+],
+```
+
+## Callbacks and webhooks
+
+Payline registers these routes when `payline.routes.enabled` is `true`:
+
+```text
+GET|POST /payline/callback/{gateway}
+POST     /payline/webhooks/{gateway}
+```
+
+If a payment request has no callback URL, Payline adds its callback route automatically. Redirect destinations can be configured globally or per gateway:
+
+```php
+'callback_success_url' => '/payments/success',
+'callback_failure_url' => '/payments/failure',
+
+'gateways' => [
+    'iyzico' => [
+        'callback_success_url' => '/iyzico/success',
+        'callback_failure_url' => '/iyzico/failure',
+    ],
+],
+```
+
+Webhooks are verified before storage or processing. Provider event IDs are deduplicated per gateway; when no event ID is available, Payline uses a fingerprint of the raw request body. Sensitive payload keys are redacted before persistence and event dispatch.
+
+Drivers that sign the raw request should implement `HandlesRawWebhooks`. `HandlesWebhooks` is available for providers that sign a normalized array payload. The webhook route is CSRF-exempt and uses `throttle:60,1` by default.
+
+## Reconciliation
+
+Provider timeouts and ambiguous errors are recorded as `unknown` instead of being treated as declined payments. Drivers implementing `QueriesPayments` can reconcile pending and unknown records:
+
+```php
+$response = Payline::payment($payment)->reconcile();
+```
+
+```bash
+php artisan payline:reconcile
+php artisan payline:reconcile --gateway=iyzico --limit=50
+```
+
+## Models and events
+
+`Payment` represents the aggregate state of a checkout attempt. `Transaction` represents an individual provider operation.
+
+```php
+$payment->transactions();
+$payment->latestTransaction();
+$payment->refunds();
+$payment->wasSuccessful();
+$payment->hasOutstandingAmount();
+$payment->isPending();
+$payment->totalRefunded();
+$payment->remainingRefundable();
+
+$order->payments();
+$order->successfulPayments();
+$order->pendingPayments();
+$order->amountPaid();
+$order->amountRefunded();
+$order->amountNet();
+$order->lastPayment();
+```
+
+Lifecycle events are dispatched only when the recorded status changes:
+
+- `PaymentInitiated`
+- `PaymentPending`
+- `PaymentSucceeded`
+- `PaymentFailed`
+- `PaymentErrored`
+- `PaymentAuthorized`
+- `PaymentCaptured`
+- `PaymentRefunded`
+- `PaymentVoided`
+- `WebhookReceived`
+- `CallbackUnmatched`
+
+## Writing a gateway driver
+
+Every driver implements `Gateway` and only the operation contracts it supports:
+
+```php
+use XLaravel\Payline\Contracts\ChargesPayments;
+use XLaravel\Payline\Contracts\Gateway;
+use XLaravel\Payline\Contracts\ProvidesGatewayCapabilities;
+use XLaravel\Payline\DTOs\GatewayCapabilities;
+use XLaravel\Payline\DTOs\PaymentRequest;
+use XLaravel\Payline\DTOs\PaymentResponse;
+use XLaravel\Payline\Enums\PaymentMethod;
+use XLaravel\Payline\Enums\TransactionType;
+
+class MyGateway implements Gateway, ChargesPayments, ProvidesGatewayCapabilities
+{
+    public function __construct(private array $config) {}
+
+    public function getName(): string
+    {
+        return 'my-gateway';
+    }
+
+    public function supportedMethods(): array
+    {
+        return [PaymentMethod::CreditCard];
+    }
+
+    public function pay(PaymentRequest $data): PaymentResponse
+    {
+        return $this->createPayment($data);
+    }
+
+    public function capabilities(): GatewayCapabilities
+    {
+        return new GatewayCapabilities(
+            operations: [TransactionType::Payment],
+            methods: [PaymentMethod::CreditCard],
+            currencies: ['TRY'],
+            installments: [1, 2, 3],
+            threeDs: true,
+            nonThreeDs: false,
+        );
+    }
+}
+```
+
+Available operation contracts:
+
+- `ChargesPayments`
+- `AuthorizesPayments`
+- `CapturesPayments`
+- `RefundsPayments`
+- `VoidsPayments`
+- `HandlesCallbacks`
+- `HandlesWebhooks` or `HandlesRawWebhooks`
+- `QueriesPayments`
+- `ProvidesGatewayCapabilities`
+
+Register the driver from its service provider:
 
 ```php
 public function boot(): void
 {
-    $this->app->make('payline')->extend('my-gateway', function ($app, array $config) {
-        return new MyGatewayDriver($config);
-    });
-
-    // Optional: register a BIN lookup driver
-    $this->app->make('payline.bin_lookup')->extend('my-gateway', function ($app, array $config) {
-        return new MyBinLookupProvider($config);
-    });
+    $this->app->make('payline')->extend(
+        'my-gateway',
+        fn ($app, array $config) => new MyGateway($config),
+    );
 }
 ```
 
-The `$config` array for the gateway driver is injected from `config('payline.gateways.my-gateway')`. For the BIN lookup driver, it comes from `config('payline.bin_lookup.drivers.my-gateway')`.
+The driver receives `config('payline.gateways.my-gateway')` as its configuration array.
 
-## Configuration
+## Configuration and security
+
+Important `config/payline.php` options:
 
 ```php
-// config/payline.php
 return [
     'default' => env('PAYLINE_DRIVER'),
 
-    'gateways' => [
-        'iyzico' => [
-            'api_key'    => env('IYZICO_API_KEY'),
-            'secret_key' => env('IYZICO_SECRET_KEY'),
-            'base_url'   => env('IYZICO_BASE_URL', 'https://sandbox-api.iyzipay.com'),
-        ],
-    ],
-
-    'bin_lookup' => [
-        'default' => env('PAYLINE_BIN_LOOKUP_DRIVER', 'null'), // 'null' = disabled
-        'drivers' => [
-            // driver-specific config (injected into BinLookupProvider constructor)
-            // 'my-gateway' => ['api_key' => env('MY_GATEWAY_API_KEY')],
-        ],
-    ],
-
     'routes' => [
-        'enabled'            => true,
-        'prefix'             => 'payline',
-        'middleware'         => ['web'],        // applied to both callback and webhook routes
-        'webhook_middleware' => [],             // applied to webhook route only (e.g. ['throttle:60,1'])
+        'enabled' => true,
+        'prefix' => 'payline',
+        'middleware' => ['web'],
+        'webhook_middleware' => ['throttle:60,1'],
     ],
 
-    'models' => [
-        'payment'         => XLaravel\Payline\Models\Payment::class,
-        'transaction'     => XLaravel\Payline\Models\Transaction::class,
-        'webhook_log'     => XLaravel\Payline\Models\WebhookLog::class,
-        'commission_rate' => XLaravel\Payline\Models\CommissionRate::class,
+    'routing' => [
+        'policies' => [],
     ],
 
     'database' => [
         'connection' => env('PAYLINE_DB_CONNECTION', env('DB_CONNECTION', 'sqlite')),
     ],
+
+    'storage' => [
+        'card_details' => true,
+        'card_holder_name' => true,
+        'webhook_payload' => true,
+    ],
 ];
 ```
 
-### Dedicated Database Connection
+Set `PAYLINE_DB_CONNECTION` to use a dedicated Laravel database connection. Disable storage fields the application does not need.
 
-Set `PAYLINE_DB_CONNECTION` in your `.env` to store all Payline tables (payments, transactions, webhook logs, commission rates) in a separate database:
+Payline never stores the complete card number or CVV. Optional card storage is limited to BIN, last four digits, and cardholder name. `Card` masks sensitive fields in debug and JSON output.
 
-```env
-PAYLINE_DB_CONNECTION=payments
-```
+Models can be replaced through `payline.models`. Custom models should extend the corresponding Payline model so relationships, casts, and connection handling remain available.
 
-The named connection must exist in `config/database.php`. When `PAYLINE_DB_CONNECTION` is not set, the value falls back to `DB_CONNECTION` (the application's default connection).
-
-## Database
-
-```
-payline_payments
-├── id                (ulid)
-├── payable_type/id   (polymorphic — Order, Invoice, etc.)
-├── owner_type/id     (polymorphic — User, etc.)
-├── gateway
-├── status            (TransactionStatus)
-├── amount            (int, kuruş)
-├── currency          (char 3)
-├── reference         (order number, invoice id, etc.)
-├── metadata          (json, nullable)
-└── timestamps
-
-payline_transactions
-├── id                       (ulid)
-├── payment_id               (FK → payline_payments, cascadeOnDelete)
-├── type                     (TransactionType)
-├── status                   (TransactionStatus)
-├── amount, currency
-├── attempt                  (int — retry counter)
-├── gateway_transaction_id   (indexed)
-├── gateway_order_id         (indexed)
-├── gateway_auth_code
-├── gateway_response_code/message
-├── error_code/message
-├── redirect_url
-├── parent_transaction_id    (FK → payline_transactions, for refunds/captures)
-├── metadata                 (json, nullable)
-└── timestamps
-
-payline_webhook_logs
-├── id               (ulid)
-├── gateway
-├── event_type
-├── gateway_event_id (unique per gateway)
-├── payload          (json)
-├── status           (WebhookStatus enum: received / processing / processed / failed)
-├── exception        (text, nullable)
-├── processed_at
-└── timestamps
-
-payline_commission_rates
-├── id              (ulid)
-├── gateway         ('hoppa', 'qnb', 'iyzico'…)
-├── card_family     (string, nullable — null = wildcard)
-├── card_type       ('credit' / 'debit' / 'foreign_credit', nullable — null = wildcard)
-├── installments    (int, default 1)
-├── rate            (decimal 8,4 — e.g. 2.9200 means 2.92%)
-├── blocking_days   (int, nullable)
-├── deleted_at      (soft delete — null = active)
-└── timestamps
-```
+For application-specific callback destinations, bind a custom `CallbackRedirectResolver`.
 
 ## Testing
 
 ```bash
-# Build first (once per PHP version)
-DOCKER_BUILDKIT=0 docker compose --profile php82 build
-
-# Run tests
-docker compose --profile php82 up
-docker compose --profile php83 up
-docker compose --profile php84 up
+composer test
 ```
 
 ## License
 
-This package is open-sourced software licensed under the [MIT license](https://opensource.org/license/MIT).
+Payline is open-sourced software licensed under the [MIT license](https://opensource.org/license/MIT).

@@ -24,6 +24,7 @@ readonly class PaymentResponse
         public ?string $errorMessage = null,
         public ?array $metadata = null,
         public ?string $eventType = null,
+        public ?string $gatewayEventId = null,
     ) {}
 
     public function isSuccessful(): bool
@@ -36,9 +37,21 @@ readonly class PaymentResponse
         return $this->status === TransactionStatus::Pending;
     }
 
+    public function isApproved(): bool
+    {
+        return in_array($this->status, [
+            TransactionStatus::Authorized,
+            TransactionStatus::Successful,
+            TransactionStatus::Voided,
+        ], true);
+    }
+
     public function isFailure(): bool
     {
-        return $this->status === TransactionStatus::Failed;
+        return in_array($this->status, [
+            TransactionStatus::Failed,
+            TransactionStatus::Expired,
+        ], true);
     }
 
     public function requiresRedirect(): bool

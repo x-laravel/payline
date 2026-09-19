@@ -21,12 +21,16 @@ return [
         'enabled' => true,
         'prefix' => 'payline',
         'middleware' => ['web'],
-        'webhook_middleware' => [],
+        'webhook_middleware' => ['throttle:60,1'],
     ],
 
     'bin_lookup' => [
         'default' => env('PAYLINE_BIN_LOOKUP_DRIVER', 'null'),
         'drivers' => [],
+    ],
+
+    'routing' => [
+        'policies' => [],
     ],
 
     'models' => [
@@ -38,5 +42,22 @@ return [
 
     'database' => [
         'connection' => env('PAYLINE_DB_CONNECTION', env('DB_CONNECTION', 'sqlite')),
+    ],
+
+    'storage' => [
+        'card_details' => true,
+        'card_holder_name' => true,
+        'webhook_payload' => true,
+    ],
+
+    'security' => [
+        'redacted_payload_keys' => [
+            'card_number',
+            'cardnumber',
+            'pan',
+            'cvv',
+            'cvc',
+            'security_code',
+        ],
     ],
 ];

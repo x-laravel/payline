@@ -5,65 +5,21 @@ namespace XLaravel\Payline\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
-use XLaravel\Payline\DTOs\CallbackData;
-use XLaravel\Payline\Enums\WebhookStatus;
-use XLaravel\Payline\Events\WebhookReceived;
+use XLaravel\Payline\DTOs\IncomingNotification;
 use XLaravel\Payline\Exceptions\WebhookSignatureException;
-use XLaravel\Payline\Models\WebhookLog;
-use XLaravel\Payline\PaylineManager;
+use XLaravel\Payline\IncomingNotificationProcessor;
 
 class WebhookController extends Controller
 {
-    public function __invoke(Request $request, string $gateway, PaylineManager $manager): Response
-    {
-        $rawBody = $request->getContent();
-        $signature = $request->header('X-Webhook-Signature')
-            ?? $request->header('X-Gateway-Signature')
-            ?? '';
-
-        $gatewayInstance = $manager->driver($gateway);
-
-        /** @var class-string<WebhookLog> $logModel */
-        $logModel = config('payline.models.webhook_log', WebhookLog::class);
-
-        $log = $logModel::create([
-            'gateway' => $gateway,
-            'payload' => $request->all(),
-            'status' => WebhookStatus::Received,
-        ]);
-
+    public function __invoke(
+        Request $request,
+        string $gateway,
+        IncomingNotificationProcessor $processor,
+    ): Response {
         try {
-            if (! $gatewayInstance->verifyWebhook($request->all(), $signature)) {
-                throw new WebhookSignatureException('Invalid webhook signature');
-            }
-
-            $log->update(['status' => WebhookStatus::Processing]);
-
-            $response = $gatewayInstance->parseWebhook($request->all());
-
-            $log->update([
-                'event_type' => $response->eventType,
-                'gateway_event_id' => $response->gatewayTransactionId,
-            ]);
-
-            event(new WebhookReceived($gateway, $response, $request->all()));
-
-            $callbackData = new CallbackData(
-                gateway: $gateway,
-                requestData: $request->all(),
-                headers: $request->headers->all(),
-                rawBody: $rawBody,
-            );
-
-            $manager->via($gateway)->handleCallback($callbackData);
-
-            $log->markProcessed();
-        } catch (WebhookSignatureException $e) {
-            $log->markFailed($e->getMessage());
-            abort(403, $e->getMessage());
-        } catch (\Throwable $e) {
-            $log->markFailed($e->getMessage());
-            throw $e;
+            $processor->process(IncomingNotification::fromRequest($request, $gateway));
+        } catch (WebhookSignatureException $exception) {
+            abort(403, $exception->getMessage());
         }
 
         return response()->noContent();

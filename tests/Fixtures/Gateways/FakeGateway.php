@@ -43,7 +43,7 @@ class FakeGateway implements Gateway
 
     public function refund(RefundData $data): PaymentResponse
     {
-        return $this->response(TransactionType::Refund, TransactionStatus::Refunded);
+        return $this->response(TransactionType::Refund);
     }
 
     public function void(VoidData $data): PaymentResponse

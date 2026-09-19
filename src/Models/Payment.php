@@ -2,12 +2,14 @@
 
 namespace XLaravel\Payline\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use XLaravel\Payline\Concerns\UsesPaylineConnection;
+use XLaravel\Payline\Enums\PaymentStatus;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Enums\TransactionType;
 
@@ -22,7 +24,8 @@ class Payment extends Model
     protected function casts(): array
     {
         return [
-            'status' => TransactionStatus::class,
+            'status' => PaymentStatus::class,
+            'initial_type' => TransactionType::class,
             'metadata' => 'array',
             'completed_at' => 'datetime',
         ];
@@ -75,15 +78,22 @@ class Payment extends Model
 
     public function scopeSuccessful($query)
     {
-        return $query->where('status', TransactionStatus::Successful->value);
+        return $query->whereIn('status', PaymentStatus::valuesOf(PaymentStatus::successful()));
+    }
+
+    public function scopeOutstanding($query)
+    {
+        return $query->whereIn('status', PaymentStatus::valuesOf(PaymentStatus::outstanding()));
     }
 
     public function scopePending($query)
     {
-        return $query->whereIn('status', [
-            TransactionStatus::Initiated->value,
-            TransactionStatus::Pending->value,
-        ]);
+        return $query->whereIn('status', PaymentStatus::valuesOf(PaymentStatus::pending()));
+    }
+
+    public function scopeRequiresReconciliation($query)
+    {
+        return $query->whereIn('status', PaymentStatus::valuesOf(PaymentStatus::requiresReconciliation()));
     }
 
     public function scopeForGateway($query, string $gateway)
@@ -91,23 +101,25 @@ class Payment extends Model
         return $query->where('gateway', $gateway);
     }
 
-    public function isSuccessful(): bool
+    public function wasSuccessful(): bool
     {
-        return $this->status === TransactionStatus::Successful;
+        return $this->status->wasSuccessful();
+    }
+
+    public function hasOutstandingAmount(): bool
+    {
+        return $this->status->hasOutstandingAmount();
     }
 
     public function isPending(): bool
     {
-        return in_array($this->status, [
-            TransactionStatus::Initiated,
-            TransactionStatus::Pending,
-        ]);
+        return $this->status->isPending();
     }
 
     public function totalRefunded(): int
     {
         return (int) $this->refunds()
-            ->where('status', TransactionStatus::Refunded->value)
+            ->where('status', TransactionStatus::Successful->value)
             ->sum('amount');
     }
 
@@ -119,5 +131,14 @@ class Payment extends Model
     public function nextAttemptNumber(): int
     {
         return $this->transactions()->max('attempt') + 1;
+    }
+
+    public function maskedNumber(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->card_bin !== null && $this->card_last_four !== null
+                ? $this->card_bin . '****' . $this->card_last_four
+                : null,
+        );
     }
 }

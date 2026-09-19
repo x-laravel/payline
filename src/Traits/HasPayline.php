@@ -3,6 +3,7 @@
 namespace XLaravel\Payline\Traits;
 
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use XLaravel\Payline\Enums\PaymentStatus;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Models\Payment;
 use XLaravel\Payline\PaylineManager;
@@ -29,21 +30,37 @@ trait HasPayline
     public function successfulPayments(): MorphMany
     {
         return $this->payments()
-            ->where('status', TransactionStatus::Successful->value);
+            ->whereIn('status', PaymentStatus::valuesOf(PaymentStatus::successful()));
     }
 
     public function pendingPayments(): MorphMany
     {
         return $this->payments()
-            ->whereIn('status', [
-                TransactionStatus::Initiated->value,
-                TransactionStatus::Pending->value,
-            ]);
+            ->whereIn('status', PaymentStatus::valuesOf(PaymentStatus::pending()));
     }
 
     public function amountPaid(): int
     {
         return (int) $this->successfulPayments()->sum('amount');
+    }
+
+    public function amountRefunded(): int
+    {
+        return (int) $this->successfulPayments()
+            ->withSum(
+                ['refunds as refunded_amount' => fn ($query) => $query->where(
+                    'status',
+                    TransactionStatus::Successful->value,
+                )],
+                'amount',
+            )
+            ->get()
+            ->sum(fn (Payment $payment) => min((int) $payment->amount, (int) $payment->refunded_amount));
+    }
+
+    public function amountNet(): int
+    {
+        return $this->amountPaid() - $this->amountRefunded();
     }
 
     public function lastPayment(): ?Payment

@@ -7,6 +7,7 @@ use XLaravel\Payline\Contracts\Gateway;
 use XLaravel\Payline\Contracts\Payable;
 use XLaravel\Payline\DTOs\CardProfile;
 use XLaravel\Payline\Routing\GatewayRouter;
+use XLaravel\Payline\Models\Payment;
 
 class PaylineManager extends Manager
 {
@@ -42,8 +43,10 @@ class PaylineManager extends Manager
     public function via(?string $driver = null): PendingPayment
     {
         return new PendingPayment(
-            gateway: $this->driver($driver),
+            gateway: $driver !== null ? $this->driver($driver) : null,
             recorder: $this->container->make(TransactionRecorder::class),
+            validator: $this->container->make(PaymentOperationValidator::class),
+            policies: $this->container->make(\XLaravel\Payline\Routing\GatewayPolicyPipeline::class),
             manager: $this,
         );
     }
@@ -59,6 +62,8 @@ class PaylineManager extends Manager
         return new PendingPayment(
             gateway: null,
             recorder: $this->container->make(TransactionRecorder::class),
+            validator: $this->container->make(PaymentOperationValidator::class),
+            policies: $this->container->make(\XLaravel\Payline\Routing\GatewayPolicyPipeline::class),
             manager: $this,
             router: $this->container->make(GatewayRouter::class),
         );
@@ -70,6 +75,11 @@ class PaylineManager extends Manager
     public function cheapestFor(CardProfile $profile, int $installments = 1): ?string
     {
         return $this->container->make(GatewayRouter::class)->cheapestFor($profile, $installments);
+    }
+
+    public function payment(Payment $payment): PaymentOperations
+    {
+        return new PaymentOperations($this, $payment);
     }
 
     /**

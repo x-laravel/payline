@@ -26,6 +26,8 @@ return new class extends Migration
             $table->unsignedBigInteger('amount');
             $table->char('currency', 3)->default('TRY');
             $table->unsignedSmallInteger('attempt')->default(1);
+            $table->string('idempotency_key')->nullable();
+            $table->char('request_hash', 64);
 
             $table->string('gateway_transaction_id')->nullable()->index();
             $table->string('gateway_order_id')->nullable()->index();
@@ -51,6 +53,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['payment_id', 'type', 'status']);
+            $table->unique(['payment_id', 'type', 'idempotency_key']);
         });
     }
 

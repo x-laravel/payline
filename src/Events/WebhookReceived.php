@@ -12,6 +12,6 @@ class WebhookReceived
     public function __construct(
         public readonly string $gateway,
         public readonly PaymentResponse $response,
-        public readonly array $rawPayload,
+        public readonly array $payload,
     ) {}
 }

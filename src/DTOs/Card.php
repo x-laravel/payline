@@ -2,18 +2,39 @@
 
 namespace XLaravel\Payline\DTOs;
 
+use InvalidArgumentException;
+use JsonSerializable;
+use SensitiveParameter;
 use XLaravel\Payline\BinLookupManager;
 
-readonly class Card
+readonly class Card implements JsonSerializable
 {
     public function __construct(
         public string $holderName,
+        #[SensitiveParameter]
         public string $number,
         public string $expiryMonth,
         public string $expiryYear,
+        #[SensitiveParameter]
         public string $cvv,
         public ?CardProfile $profile = null,
-    ) {}
+    ) {
+        if (! preg_match('/^\d{13,19}$/', $this->number)) {
+            throw new InvalidArgumentException('Card number must contain 13 to 19 digits.');
+        }
+
+        if (! preg_match('/^(0[1-9]|1[0-2])$/', $this->expiryMonth)) {
+            throw new InvalidArgumentException('Card expiry month is invalid.');
+        }
+
+        if (! preg_match('/^\d{2,4}$/', $this->expiryYear)) {
+            throw new InvalidArgumentException('Card expiry year is invalid.');
+        }
+
+        if (! preg_match('/^\d{3,4}$/', $this->cvv)) {
+            throw new InvalidArgumentException('Card security code must contain three or four digits.');
+        }
+    }
 
     public function resolveProfile(BinLookupManager $manager): self
     {
@@ -35,6 +56,16 @@ readonly class Card
 
     public function __debugInfo(): array
     {
+        return $this->safeData();
+    }
+
+    public function jsonSerialize(): array
+    {
+        return $this->safeData();
+    }
+
+    private function safeData(): array
+    {
         return [
             'holderName' => $this->holderName,
             'number' => $this->maskedNumber(),
@@ -45,6 +76,11 @@ readonly class Card
         ];
     }
 
+    public function bin(): string
+    {
+        return substr($this->number, 0, 8);
+    }
+
     public function lastFour(): string
     {
         return substr($this->number, -4);
@@ -52,6 +88,6 @@ readonly class Card
 
     public function maskedNumber(): string
     {
-        return str_repeat('*', strlen($this->number) - 4) . $this->lastFour();
+        return $this->bin() . str_repeat('*', strlen($this->number) - 12) . $this->lastFour();
     }
 }

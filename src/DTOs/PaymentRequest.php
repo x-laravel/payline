@@ -2,6 +2,7 @@
 
 namespace XLaravel\Payline\DTOs;
 
+use InvalidArgumentException;
 use XLaravel\Payline\Contracts\Payable;
 use XLaravel\Payline\Enums\PaymentMethod;
 
@@ -31,11 +32,47 @@ readonly class PaymentRequest
         public ?Address $shippingAddress = null,
         public ?array $metadata = null,
         public ?CardProfile $cardProfile = null,
-    ) {}
+        public ?string $idempotencyKey = null,
+    ) {
+        if (trim($this->reference) === '') {
+            throw new InvalidArgumentException('Payment reference cannot be empty.');
+        }
+
+        if ($this->amount <= 0) {
+            throw new InvalidArgumentException('Payment amount must be greater than zero.');
+        }
+
+        if (! preg_match('/^[A-Z]{3}$/', strtoupper($this->currency))) {
+            throw new InvalidArgumentException('Payment currency must be a three-letter ISO code.');
+        }
+
+        if ($this->installments !== null && $this->installments < 1) {
+            throw new InvalidArgumentException('Installments must be greater than zero.');
+        }
+
+        if ($this->idempotencyKey !== null && trim($this->idempotencyKey) === '') {
+            throw new InvalidArgumentException('Idempotency key cannot be empty.');
+        }
+    }
 
     public function withCallbackUrl(string $url): self
     {
         return $this->with(['callbackUrl' => $url]);
+    }
+
+    public function fingerprint(): string
+    {
+        return hash('sha256', json_encode([
+            'reference' => $this->reference,
+            'amount' => $this->amount,
+            'currency' => strtoupper($this->currency),
+            'method' => $this->method?->value,
+            'card_bin' => $this->card?->bin(),
+            'card_last_four' => $this->card?->lastFour(),
+            'card_token' => $this->cardToken,
+            'three_ds' => $this->threeDs,
+            'installments' => $this->installments ?? 1,
+        ], JSON_THROW_ON_ERROR));
     }
 
     private function with(array $overrides): self
@@ -70,6 +107,7 @@ readonly class PaymentRequest
         ?string $customerIp = null,
         ?string $description = null,
         ?PaymentMethod $method = null,
+        ?string $idempotencyKey = null,
     ): self {
         return new self(
             reference: $payable->getPayableReference(),
@@ -92,6 +130,7 @@ readonly class PaymentRequest
             shippingAddress: $shippingAddress,
             metadata: $metadata,
             cardProfile: $cardProfile,
+            idempotencyKey: $idempotencyKey,
         );
     }
 }

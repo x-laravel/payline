@@ -6,12 +6,17 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use XLaravel\Payline\DTOs\CallbackData;
+use XLaravel\Payline\Contracts\CallbackRedirectResolver;
 use XLaravel\Payline\PaylineManager;
 
 class CallbackController extends Controller
 {
-    public function __invoke(Request $request, string $gateway, PaylineManager $manager): RedirectResponse
-    {
+    public function __invoke(
+        Request $request,
+        string $gateway,
+        PaylineManager $manager,
+        CallbackRedirectResolver $redirects,
+    ): RedirectResponse {
         $data = new CallbackData(
             gateway: $gateway,
             requestData: array_merge($request->query(), $request->post()),
@@ -27,16 +32,6 @@ class CallbackController extends Controller
             'payline_transaction_id' => $result->transaction?->id,
         ];
 
-        if ($result->response->isSuccessful()) {
-            $url = config("payline.gateways.{$gateway}.callback_success_url")
-                ?? config('payline.callback_success_url', '/');
-
-            return redirect($url)->with($flash);
-        }
-
-        $url = config("payline.gateways.{$gateway}.callback_failure_url")
-            ?? config('payline.callback_failure_url', '/');
-
-        return redirect($url)->with($flash);
+        return redirect($redirects->resolve($gateway, $result))->with($flash);
     }
 }

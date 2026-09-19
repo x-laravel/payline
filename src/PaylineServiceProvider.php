@@ -4,9 +4,14 @@ namespace XLaravel\Payline;
 
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\ServiceProvider;
+use XLaravel\Payline\Console\PaylineDoctorCommand;
+use XLaravel\Payline\Console\ReconcilePaymentsCommand;
+use XLaravel\Payline\Contracts\CallbackRedirectResolver;
 use XLaravel\Payline\Http\Controllers\CallbackController;
 use XLaravel\Payline\Http\Controllers\WebhookController;
 use XLaravel\Payline\Routing\GatewayRouter;
+use XLaravel\Payline\Routing\GatewayPolicyPipeline;
+use XLaravel\Payline\Routing\ConfigCallbackRedirectResolver;
 
 class PaylineServiceProvider extends ServiceProvider
 {
@@ -24,6 +29,10 @@ class PaylineServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->registerPublishables();
+            $this->commands([
+                PaylineDoctorCommand::class,
+                ReconcilePaymentsCommand::class,
+            ]);
         }
 
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
@@ -45,6 +54,10 @@ class PaylineServiceProvider extends ServiceProvider
     {
         $this->app->singleton(TransactionRecorder::class);
         $this->app->singleton(GatewayRouter::class);
+        $this->app->singleton(GatewayPolicyPipeline::class);
+        $this->app->singleton(PaymentOperationValidator::class);
+        $this->app->singleton(IncomingNotificationProcessor::class);
+        $this->app->bind(CallbackRedirectResolver::class, ConfigCallbackRedirectResolver::class);
     }
 
     /** Publishes config and migration files. */
@@ -74,6 +87,7 @@ class PaylineServiceProvider extends ServiceProvider
 
         $router->match(['GET', 'POST'], "{$prefix}/callback/{gateway}", CallbackController::class)
             ->middleware($middleware)
+            ->withoutMiddleware(['csrf', VerifyCsrfToken::class])
             ->name('payline.callback');
 
         $router->post("{$prefix}/webhooks/{gateway}", WebhookController::class)

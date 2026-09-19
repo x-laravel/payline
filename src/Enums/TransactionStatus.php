@@ -9,20 +9,19 @@ enum TransactionStatus: string
     case Authorized = 'authorized';
     case Successful = 'successful';
     case Failed = 'failed';
-    case Refunded = 'refunded';
-    case PartiallyRefunded = 'partially_refunded';
     case Voided = 'voided';
     case Expired = 'expired';
+    case Unknown = 'unknown';
 
     public function isFinal(): bool
     {
         return in_array($this, [
+            self::Authorized,
             self::Successful,
             self::Failed,
-            self::Refunded,
             self::Voided,
             self::Expired,
-        ]);
+        ], true);
     }
 
     public function label(): string
@@ -33,10 +32,9 @@ enum TransactionStatus: string
             self::Authorized => 'Authorized',
             self::Successful => 'Successful',
             self::Failed => 'Failed',
-            self::Refunded => 'Refunded',
-            self::PartiallyRefunded => 'Partially Refunded',
             self::Voided => 'Voided',
             self::Expired => 'Expired',
+            self::Unknown => 'Unknown',
         };
     }
 }

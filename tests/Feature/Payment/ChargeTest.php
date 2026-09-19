@@ -101,6 +101,6 @@ class ChargeTest extends TestCase
         Payline::for($order)->via('fake')->charge(PaymentRequest::fromPayable($order));
 
         $this->assertCount(1, $order->payments);
-        $this->assertTrue($order->payments->first()->isSuccessful());
+        $this->assertTrue($order->payments->first()->wasSuccessful());
     }
 }

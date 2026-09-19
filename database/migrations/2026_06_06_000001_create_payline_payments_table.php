@@ -17,10 +17,17 @@ return new class extends Migration
             $table->ulid('id')->primary();
 
             $table->string('gateway', 50);
+            $table->string('initial_type', 30);
             $table->string('status', 30)->default('initiated');
+            $table->string('idempotency_key')->nullable();
+            $table->char('request_hash', 64);
 
             $table->unsignedBigInteger('amount');
             $table->char('currency', 3)->default('TRY');
+
+            $table->char('card_bin', 8)->nullable();
+            $table->char('card_last_four', 4)->nullable();
+            $table->string('card_holder_name')->nullable();
 
             $table->nullableMorphs('payable');
             $table->nullableMorphs('owner');
@@ -33,6 +40,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['gateway', 'status']);
+            $table->unique(['gateway', 'initial_type', 'idempotency_key']);
             $table->index(['payable_type', 'payable_id', 'status']);
             $table->index(['owner_type', 'owner_id', 'status']);
         });
