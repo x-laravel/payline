@@ -3,6 +3,7 @@
 namespace XLaravel\Payline;
 
 use Illuminate\Support\Manager;
+use Illuminate\Support\Str;
 use RuntimeException;
 use XLaravel\Payline\Contracts\Gateway;
 use XLaravel\Payline\Contracts\Payable;
@@ -33,6 +34,12 @@ class PaylineManager extends Manager
         $instance = parent::driver($driver);
 
         return $instance;
+    }
+
+    public function hasDriver(string $driver): bool
+    {
+        return isset($this->customCreators[$driver])
+            || method_exists($this, 'create' . Str::studly($driver) . 'Driver');
     }
 
     public function via(?string $driver = null): PendingPayment

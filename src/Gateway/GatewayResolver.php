@@ -36,7 +36,11 @@ class GatewayResolver
         $profile = $data->card?->profile ?? $data->cardProfile;
 
         if ($autoRoute && $profile !== null) {
-            foreach ($this->router->rankedFor($profile, $data->installments ?? 1) as $driver => $rate) {
+            foreach (array_keys($this->router->rankedFor($profile, $data->installments ?? 1)) as $driver) {
+                if (! $this->manager->hasDriver($driver)) {
+                    continue;
+                }
+
                 $gateway = $this->manager->driver($driver);
 
                 if ($this->supports($gateway, $data, $type)) {
