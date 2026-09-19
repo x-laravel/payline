@@ -33,6 +33,39 @@ class TransactionUpdateTest extends TestCase
         $this->assertSame(PaymentStatus::Paid, Payment::firstOrFail()->status);
     }
 
+    public function test_gateway_metadata_is_merged_into_the_request_metadata(): void
+    {
+        FakeGateway::willReturn(new PaymentResponse(
+            status: TransactionStatus::Successful,
+            type: TransactionType::Payment,
+            gatewayName: 'fake',
+            gatewayTransactionId: 'fake-txn-1',
+            metadata: ['BatchNo' => '81'],
+        ));
+
+        Payline::via('fake')
+            ->reference('ORD-001')
+            ->amount(10000)
+            ->metadata(['basket_id' => 42])
+            ->charge();
+
+        $this->assertSame(
+            ['basket_id' => 42, 'BatchNo' => '81'],
+            Transaction::firstOrFail()->metadata,
+        );
+    }
+
+    public function test_a_response_without_metadata_keeps_the_request_metadata(): void
+    {
+        Payline::via('fake')
+            ->reference('ORD-002')
+            ->amount(10000)
+            ->metadata(['basket_id' => 42])
+            ->charge();
+
+        $this->assertSame(['basket_id' => 42], Transaction::firstOrFail()->metadata);
+    }
+
     public function test_an_expiry_from_the_gateway_is_recorded_on_the_transaction(): void
     {
         FakeGateway::willReturn(new PaymentResponse(

@@ -48,7 +48,7 @@ class TransactionUpdater
                 'error_code' => $response->errorCode,
                 'error_message' => $response->errorMessage,
                 'redirect_url' => $response->redirectUrl ?? $lockedTransaction->redirect_url,
-                'metadata' => $response->metadata ?? $lockedTransaction->metadata,
+                'metadata' => $this->mergedMetadata($lockedTransaction, $response),
                 'expires_at' => $response->expiresAt ?? $lockedTransaction->expires_at,
                 'completed_at' => $response->status->isFinal()
                     ? ($lockedTransaction->completed_at ?? now())
@@ -149,6 +149,15 @@ class TransactionUpdater
             ->where('type', TransactionType::Capture->value)
             ->where('status', TransactionStatus::Successful->value)
             ->sum('amount');
+    }
+
+    private function mergedMetadata(Transaction $transaction, PaymentResponse $response): ?array
+    {
+        if ($response->metadata === null) {
+            return $transaction->metadata;
+        }
+
+        return array_merge($transaction->metadata ?? [], $response->metadata);
     }
 
     private function confirmedAmount(Transaction $transaction, PaymentResponse $response): int
