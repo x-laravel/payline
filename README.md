@@ -9,6 +9,8 @@ Payline is a reusable payment orchestration layer for Laravel. Gateway packages 
 
 Every recorded operation creates or updates a `Payment` and `Transaction`, validates the state transition, and dispatches Laravel events.
 
+Full documentation is in [docs/](docs/README.md).
+
 ## Requirements
 
 - PHP 8.3 or newer
@@ -465,6 +467,22 @@ For application-specific callback destinations, bind a custom `CallbackRedirectR
 ```bash
 composer test
 ```
+
+## Documentation
+
+| Page | Answers |
+|------|---------|
+| [Installation](docs/installation.md) | How do I get Payline running? |
+| [Architecture](docs/architecture.md) | What does Payline record, and which class does what? |
+| [Payments](docs/payments.md) | How do I charge or authorize a card? |
+| [Follow-up Operations](docs/follow-up-operations.md) | How do I capture, refund, void or reconcile? |
+| [Callbacks and Webhooks](docs/callbacks-and-webhooks.md) | How are 3DS returns and provider notifications handled? |
+| [Gateway Routing](docs/gateway-routing.md) | How is a gateway chosen automatically? |
+| [Writing a Driver](docs/writing-a-driver.md) | How do I support a new provider? |
+| [Configuration](docs/configuration.md) | Which configuration keys exist? |
+| [Events](docs/events.md) | Which events are dispatched? |
+| [Database](docs/database.md) | Which tables, columns and statuses exist? |
+| [Decisions](docs/decisions/README.md) | Why is the package built this way? |
 
 ## License
 
