@@ -33,6 +33,31 @@ class TransactionUpdateTest extends TestCase
         $this->assertSame(PaymentStatus::Paid, Payment::firstOrFail()->status);
     }
 
+    public function test_an_expiry_from_the_gateway_is_recorded_on_the_transaction(): void
+    {
+        FakeGateway::willReturn(new PaymentResponse(
+            status: TransactionStatus::Authorized,
+            type: TransactionType::Authorization,
+            gatewayName: 'fake',
+            gatewayTransactionId: 'fake-auth-1',
+            expiresAt: now()->addDays(25),
+        ));
+
+        Payline::via('fake')->reference('ORD-001')->amount(10000)->authorize();
+
+        $expiresAt = Transaction::firstOrFail()->expires_at;
+
+        $this->assertNotNull($expiresAt);
+        $this->assertSame(now()->addDays(25)->format('Y-m-d'), $expiresAt->format('Y-m-d'));
+    }
+
+    public function test_a_transaction_without_a_gateway_expiry_keeps_none(): void
+    {
+        Payline::via('fake')->reference('ORD-002')->amount(10000)->charge();
+
+        $this->assertNull(Transaction::firstOrFail()->expires_at);
+    }
+
     public function test_a_confirmed_amount_below_the_requested_amount_is_recorded(): void
     {
         FakeGateway::willReturn(new PaymentResponse(

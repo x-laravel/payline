@@ -2,6 +2,7 @@
 
 namespace XLaravel\Payline\DTOs;
 
+use DateTimeInterface;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Enums\TransactionType;
 
@@ -25,6 +26,7 @@ readonly class PaymentResponse
         public ?array $metadata = null,
         public ?string $eventType = null,
         public ?string $gatewayEventId = null,
+        public ?DateTimeInterface $expiresAt = null,
     ) {}
 
     public function isSuccessful(): bool

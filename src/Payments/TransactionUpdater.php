@@ -49,6 +49,7 @@ class TransactionUpdater
                 'error_message' => $response->errorMessage,
                 'redirect_url' => $response->redirectUrl ?? $lockedTransaction->redirect_url,
                 'metadata' => $response->metadata ?? $lockedTransaction->metadata,
+                'expires_at' => $response->expiresAt ?? $lockedTransaction->expires_at,
                 'completed_at' => $response->status->isFinal()
                     ? ($lockedTransaction->completed_at ?? now())
                     : null,

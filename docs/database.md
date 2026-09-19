@@ -68,7 +68,7 @@ One provider call.
 | `redirect_url` | `text`, nullable | |
 | `metadata` | `json`, nullable | |
 | `parent_transaction_id` | `ulid`, nullable | Self reference, null on delete |
-| `expires_at` | `timestamp`, nullable | |
+| `expires_at` | `timestamp`, nullable | Set from the driver's `expiresAt`, typically an authorization window |
 | `completed_at` | `timestamp`, nullable | Set when the status becomes final |
 
 Indexes: `(payment_id, type, status)`. Unique on `(payment_id, type, idempotency_key)`.

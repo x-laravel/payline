@@ -170,7 +170,6 @@ public function handleCallback(CallbackData $data): PaymentResponse
             status: TransactionStatus::Failed,
             type: TransactionType::Payment,
             gatewayName: $this->getName(),
-            gatewayTransactionId: $post['OrderId'] ?? null,
             errorCode: 'HASH_MISMATCH',
             errorMessage: 'Security verification failed.',
         );
@@ -181,6 +180,12 @@ public function handleCallback(CallbackData $data): PaymentResponse
 ```
 
 Set `gatewayTransactionId` or `gatewayOrderId` to the value the provider echoes back. Payline matches on those two, in that order, and cannot record the outcome without one of them.
+
+A response that failed verification must carry neither. Payline matches on whatever identifier it finds, and a settled status is final, so an unverified `failed` response with a valid identifier closes a payment that may well have been collected. Anyone who can guess an identifier can then post one. Leave them out and the response matches nothing.
+
+Read the operation type from the callback rather than assuming a charge. A provider that returns the same callback for a charge and an authorization needs the type it reports, because Payline scopes the lookup to the operation type and records `authorized` rather than `successful` for an authorization.
+
+Set `expiresAt` when the provider states how long an authorization stays open. It is stored on the transaction and is the only record of when the reservation lapses.
 
 ## Handling Webhooks
 
