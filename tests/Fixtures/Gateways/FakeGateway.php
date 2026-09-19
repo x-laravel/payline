@@ -2,7 +2,14 @@
 
 namespace XLaravel\Payline\Tests\Fixtures\Gateways;
 
+use XLaravel\Payline\Contracts\AuthorizesPayments;
+use XLaravel\Payline\Contracts\CapturesPayments;
+use XLaravel\Payline\Contracts\ChargesPayments;
 use XLaravel\Payline\Contracts\Gateway;
+use XLaravel\Payline\Contracts\HandlesCallbacks;
+use XLaravel\Payline\Contracts\HandlesWebhooks;
+use XLaravel\Payline\Contracts\RefundsPayments;
+use XLaravel\Payline\Contracts\VoidsPayments;
 use XLaravel\Payline\DTOs\CallbackData;
 use XLaravel\Payline\DTOs\CaptureData;
 use XLaravel\Payline\DTOs\PaymentRequest;
@@ -12,7 +19,15 @@ use XLaravel\Payline\DTOs\VoidData;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Enums\TransactionType;
 
-class FakeGateway implements Gateway
+class FakeGateway implements
+    AuthorizesPayments,
+    CapturesPayments,
+    ChargesPayments,
+    Gateway,
+    HandlesCallbacks,
+    HandlesWebhooks,
+    RefundsPayments,
+    VoidsPayments
 {
     private static ?PaymentResponse $nextResponse = null;
 

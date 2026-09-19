@@ -41,6 +41,42 @@ enum PaymentStatus: string
         ], true);
     }
 
+    public function canTransitionTo(self $to): bool
+    {
+        return match ($this) {
+            self::Unknown, self::Initiated => true,
+            self::Pending => in_array($to, [
+                self::Authorized,
+                self::Paid,
+                self::Failed,
+                self::Expired,
+                self::Unknown,
+            ], true),
+            self::Authorized => in_array($to, [
+                self::Paid,
+                self::Voided,
+                self::Unknown,
+            ], true),
+            self::Paid => in_array($to, [
+                self::PartiallyRefunded,
+                self::Refunded,
+                self::Unknown,
+            ], true),
+            self::PartiallyRefunded => in_array($to, [
+                self::Refunded,
+                self::Unknown,
+            ], true),
+            self::Failed,
+            self::Expired => in_array($to, [
+                self::Pending,
+                self::Authorized,
+                self::Paid,
+            ], true),
+            self::Refunded,
+            self::Voided => false,
+        };
+    }
+
     /** @return array<int, self> */
     public static function successful(): array
     {

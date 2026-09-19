@@ -21,14 +21,16 @@ Amounts are integers in the currency's minor unit. For example, `10000` represen
 
 ```bash
 composer require x-laravel/payline
+php artisan vendor:publish --tag=payline-migrations
 php artisan migrate
 ```
 
-Publish configuration or migrations when customization is required:
+Payline does not register its migrations from the package directory. Publishing them is required, and it leaves the schema under the application's control.
+
+Publish the configuration when the defaults need changing:
 
 ```bash
 php artisan vendor:publish --tag=payline-config
-php artisan vendor:publish --tag=payline-migrations
 ```
 
 ```env
@@ -250,7 +252,7 @@ If a payment request has no callback URL, Payline adds its callback route automa
 
 Webhooks are verified before storage or processing. Provider event IDs are deduplicated per gateway; when no event ID is available, Payline uses a fingerprint of the raw request body. Sensitive payload keys are redacted before persistence and event dispatch.
 
-Drivers that sign the raw request should implement `HandlesRawWebhooks`. `HandlesWebhooks` is available for providers that sign a normalized array payload. The webhook route is CSRF-exempt and uses `throttle:60,1` by default.
+Drivers that sign the raw request must implement `HandlesRawWebhooks`. Providers that sign a normalized array payload implement `HandlesWebhooks` instead. A driver implementing neither cannot receive webhooks. The webhook route is CSRF-exempt and uses `throttle:60,1` by default.
 
 ## Reconciliation
 
@@ -361,6 +363,8 @@ Available operation contracts:
 - `QueriesPayments`
 - `ProvidesGatewayCapabilities`
 
+Payline dispatches every operation through these contracts. A driver that defines a matching method without implementing the contract is rejected with a `LogicException`.
+
 Register the driver from its service provider:
 
 ```php
@@ -410,7 +414,17 @@ Set `PAYLINE_DB_CONNECTION` to use a dedicated Laravel database connection. Disa
 
 Payline never stores the complete card number or CVV. Optional card storage is limited to BIN, last four digits, and cardholder name. `Card` masks sensitive fields in debug and JSON output.
 
-Models can be replaced through `payline.models`. Custom models should extend the corresponding Payline model so relationships, casts, and connection handling remain available.
+Models can be replaced through `payline.models`, or from `AppServiceProvider::boot()`:
+
+```php
+use XLaravel\Payline\Facades\Payline;
+
+Payline::usePaymentModel(MyPayment::class);
+Payline::useTransactionModel(MyTransaction::class);
+Payline::useWebhookLogModel(MyWebhookLog::class);
+```
+
+These take precedence over the configuration values. Custom models should extend the corresponding Payline model so relationships, casts, and connection handling remain available.
 
 For application-specific callback destinations, bind a custom `CallbackRedirectResolver`.
 

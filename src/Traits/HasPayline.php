@@ -4,6 +4,7 @@ namespace XLaravel\Payline\Traits;
 
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use XLaravel\Payline\Enums\PaymentStatus;
+use XLaravel\Payline\Facades\Payline;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Models\Payment;
 use XLaravel\Payline\PaylineManager;
@@ -22,7 +23,7 @@ trait HasPayline
     public function payments(): MorphMany
     {
         return $this->morphMany(
-            config('payline.models.payment', Payment::class),
+            Payline::paymentModel(),
             'payable',
         );
     }

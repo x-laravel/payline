@@ -7,15 +7,21 @@ use Illuminate\Support\ServiceProvider;
 use XLaravel\Payline\Console\PaylineDoctorCommand;
 use XLaravel\Payline\Console\ReconcilePaymentsCommand;
 use XLaravel\Payline\Contracts\CallbackRedirectResolver;
+use XLaravel\Payline\Gateway\GatewayInvoker;
+use XLaravel\Payline\Gateway\GatewayResolver;
 use XLaravel\Payline\Http\Controllers\CallbackController;
 use XLaravel\Payline\Http\Controllers\WebhookController;
-use XLaravel\Payline\Routing\GatewayRouter;
-use XLaravel\Payline\Routing\GatewayPolicyPipeline;
+use XLaravel\Payline\Notifications\CallbackHandler;
+use XLaravel\Payline\Payments\AmountLedger;
+use XLaravel\Payline\Payments\TransactionRunner;
+use XLaravel\Payline\Payments\TransactionUpdater;
 use XLaravel\Payline\Routing\ConfigCallbackRedirectResolver;
+use XLaravel\Payline\Routing\GatewayPolicyPipeline;
+use XLaravel\Payline\Routing\GatewayRouter;
+use XLaravel\Payline\StateMachine\PaymentStatusResolver;
 
 class PaylineServiceProvider extends ServiceProvider
 {
-    /** Merges config and registers singletons — runs before boot(). */
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/payline.php', 'payline');
@@ -24,7 +30,6 @@ class PaylineServiceProvider extends ServiceProvider
         $this->registerInternals();
     }
 
-    /** Registers publishables, loads migrations, and registers routes. */
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
@@ -35,11 +40,9 @@ class PaylineServiceProvider extends ServiceProvider
             ]);
         }
 
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
         $this->registerRoutes();
     }
 
-    /** Registers PaylineManager and BinLookupManager as singletons. */
     private function registerManagers(): void
     {
         $this->app->singleton('payline', fn ($app) => new PaylineManager($app));
@@ -49,30 +52,34 @@ class PaylineServiceProvider extends ServiceProvider
         $this->app->alias('payline.bin_lookup', BinLookupManager::class);
     }
 
-    /** Registers internal services for transaction recording and gateway routing. */
     private function registerInternals(): void
     {
         $this->app->singleton(TransactionRecorder::class);
+        $this->app->singleton(TransactionRunner::class);
+        $this->app->singleton(TransactionUpdater::class);
+        $this->app->singleton(AmountLedger::class);
+        $this->app->singleton(PaymentStatusResolver::class);
         $this->app->singleton(GatewayRouter::class);
         $this->app->singleton(GatewayPolicyPipeline::class);
+        $this->app->singleton(GatewayResolver::class);
+        $this->app->singleton(GatewayInvoker::class);
         $this->app->singleton(PaymentOperationValidator::class);
+        $this->app->singleton(CallbackHandler::class);
         $this->app->singleton(IncomingNotificationProcessor::class);
         $this->app->bind(CallbackRedirectResolver::class, ConfigCallbackRedirectResolver::class);
     }
 
-    /** Publishes config and migration files. */
     private function registerPublishables(): void
     {
         $this->publishes([
             __DIR__ . '/../config/payline.php' => config_path('payline.php'),
         ], 'payline-config');
 
-        $this->publishes([
+        $this->publishesMigrations([
             __DIR__ . '/../database/migrations' => database_path('migrations'),
         ], 'payline-migrations');
     }
 
-    /** Registers callback and webhook routes based on config. */
     private function registerRoutes(): void
     {
         if (! $this->app['config']->get('payline.routes.enabled', true)) {

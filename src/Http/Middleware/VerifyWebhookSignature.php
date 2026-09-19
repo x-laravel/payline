@@ -27,7 +27,7 @@ class VerifyWebhookSignature
 
         if ($gatewayInstance instanceof HandlesRawWebhooks) {
             $verified = $gatewayInstance->verifyIncomingNotification($notification);
-        } elseif ($gatewayInstance instanceof HandlesWebhooks || method_exists($gatewayInstance, 'verifyWebhook')) {
+        } elseif ($gatewayInstance instanceof HandlesWebhooks) {
             $verified = $gatewayInstance->verifyWebhook($notification->payload(), $notification->signature);
         } else {
             throw new WebhookSignatureException("Gateway [{$gateway}] does not support webhooks.");

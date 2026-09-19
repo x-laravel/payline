@@ -4,7 +4,7 @@ namespace XLaravel\Payline\Console;
 
 use Illuminate\Console\Command;
 use Throwable;
-use XLaravel\Payline\Models\Payment;
+use XLaravel\Payline\Facades\Payline;
 use XLaravel\Payline\PaylineManager;
 
 class ReconcilePaymentsCommand extends Command
@@ -15,7 +15,7 @@ class ReconcilePaymentsCommand extends Command
 
     public function handle(PaylineManager $manager): int
     {
-        $model = config('payline.models.payment', Payment::class);
+        $model = Payline::paymentModel();
         $query = $model::query()
             ->requiresReconciliation()
             ->oldest('updated_at')

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use XLaravel\Payline\Concerns\UsesPaylineConnection;
+use XLaravel\Payline\Facades\Payline;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Enums\TransactionType;
 
@@ -32,7 +33,7 @@ class Transaction extends Model
     public function payment(): BelongsTo
     {
         return $this->belongsTo(
-            config('payline.models.payment', Payment::class),
+            Payline::paymentModel(),
             'payment_id',
         );
     }

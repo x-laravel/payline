@@ -24,6 +24,30 @@ enum TransactionStatus: string
         ], true);
     }
 
+    public function canTransitionTo(self $to): bool
+    {
+        if ($this === $to) {
+            return true;
+        }
+
+        return match ($this) {
+            self::Initiated, self::Unknown => true,
+            self::Pending => in_array($to, [
+                self::Authorized,
+                self::Successful,
+                self::Failed,
+                self::Expired,
+                self::Voided,
+                self::Unknown,
+            ], true),
+            self::Authorized,
+            self::Successful,
+            self::Failed,
+            self::Expired,
+            self::Voided => false,
+        };
+    }
+
     public function label(): string
     {
         return match ($this) {

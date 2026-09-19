@@ -2,6 +2,7 @@
 
 namespace XLaravel\Payline;
 
+use LogicException;
 use XLaravel\Payline\DTOs\CaptureData;
 use XLaravel\Payline\DTOs\RefundData;
 use XLaravel\Payline\DTOs\VoidData;
@@ -14,6 +15,22 @@ use XLaravel\Payline\Models\Transaction;
 
 class PaymentOperationValidator
 {
+    public function validate(
+        TransactionType $type,
+        CaptureData|RefundData|VoidData $data,
+        Payment $payment,
+        Transaction $parent,
+    ): void {
+        match ($type) {
+            TransactionType::Capture => $this->capture($data, $payment, $parent),
+            TransactionType::Refund => $this->refund($data, $payment, $parent),
+            TransactionType::Void => $this->void($data, $payment, $parent),
+            default => throw new LogicException(
+                "[{$type->value}] is not a follow-up operation.",
+            ),
+        };
+    }
+
     public function capture(CaptureData $data, Payment $payment, Transaction $parent): void
     {
         $payment->refresh();
@@ -26,10 +43,6 @@ class PaymentOperationValidator
             || $parent->type !== TransactionType::Authorization
             || $parent->status !== TransactionStatus::Authorized) {
             throw new InvalidPaymentOperationException('Only an authorized payment can be captured.');
-        }
-
-        if ($data->amount > $parent->amount) {
-            throw new InvalidPaymentOperationException('Capture amount cannot exceed the authorized amount.');
         }
     }
 
@@ -48,10 +61,6 @@ class PaymentOperationValidator
         if (! in_array($parent->type, [TransactionType::Payment, TransactionType::Capture], true)
             || $parent->status !== TransactionStatus::Successful) {
             throw new InvalidPaymentOperationException('Refund parent must be a successful payment or capture transaction.');
-        }
-
-        if ($data->amount > $payment->remainingRefundable()) {
-            throw new InvalidPaymentOperationException('Refund amount cannot exceed the remaining refundable amount.');
         }
     }
 

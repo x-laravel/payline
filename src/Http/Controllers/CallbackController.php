@@ -7,14 +7,14 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use XLaravel\Payline\DTOs\CallbackData;
 use XLaravel\Payline\Contracts\CallbackRedirectResolver;
-use XLaravel\Payline\PaylineManager;
+use XLaravel\Payline\Notifications\CallbackHandler;
 
 class CallbackController extends Controller
 {
     public function __invoke(
         Request $request,
         string $gateway,
-        PaylineManager $manager,
+        CallbackHandler $callbacks,
         CallbackRedirectResolver $redirects,
     ): RedirectResponse {
         $data = new CallbackData(
@@ -24,7 +24,7 @@ class CallbackController extends Controller
             rawBody: $request->getContent() ?: null,
         );
 
-        $result = $manager->via($gateway)->handleCallback($data);
+        $result = $callbacks->handle($data);
 
         $flash = [
             'payline_status' => $result->response->status->value,

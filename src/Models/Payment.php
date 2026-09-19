@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use XLaravel\Payline\Concerns\UsesPaylineConnection;
+use XLaravel\Payline\Facades\Payline;
 use XLaravel\Payline\Enums\PaymentStatus;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Enums\TransactionType;
@@ -44,7 +45,7 @@ class Payment extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(
-            config('payline.models.transaction', Transaction::class),
+            Payline::transactionModel(),
             'payment_id',
         );
     }
@@ -52,7 +53,7 @@ class Payment extends Model
     public function latestTransaction(): HasOne
     {
         return $this->hasOne(
-            config('payline.models.transaction', Transaction::class),
+            Payline::transactionModel(),
             'payment_id',
         )->latestOfMany();
     }
@@ -60,7 +61,7 @@ class Payment extends Model
     public function successfulTransaction(): HasOne
     {
         return $this->hasOne(
-            config('payline.models.transaction', Transaction::class),
+            Payline::transactionModel(),
             'payment_id',
         )->ofMany(
             ['id' => 'max'],

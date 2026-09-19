@@ -2,6 +2,7 @@
 
 namespace XLaravel\Payline;
 
+use LogicException;
 use Throwable;
 use XLaravel\Payline\Contracts\HandlesRawWebhooks;
 use XLaravel\Payline\Contracts\HandlesWebhooks;
@@ -9,11 +10,15 @@ use XLaravel\Payline\DTOs\IncomingNotification;
 use XLaravel\Payline\Enums\WebhookStatus;
 use XLaravel\Payline\Events\WebhookReceived;
 use XLaravel\Payline\Exceptions\WebhookSignatureException;
-use XLaravel\Payline\Models\WebhookLog;
+use XLaravel\Payline\Facades\Payline;
+use XLaravel\Payline\Notifications\CallbackHandler;
 
 class IncomingNotificationProcessor
 {
-    public function __construct(private readonly PaylineManager $manager) {}
+    public function __construct(
+        private readonly PaylineManager $manager,
+        private readonly CallbackHandler $callbacks,
+    ) {}
 
     public function process(IncomingNotification $notification): void
     {
@@ -23,12 +28,16 @@ class IncomingNotificationProcessor
         if ($gateway instanceof HandlesRawWebhooks) {
             $verified = $gateway->verifyIncomingNotification($notification);
             $response = $gateway->parseIncomingNotification($notification);
-        } elseif ($gateway instanceof HandlesWebhooks
-            || (method_exists($gateway, 'verifyWebhook') && method_exists($gateway, 'parseWebhook'))) {
+        } elseif ($gateway instanceof HandlesWebhooks) {
             $verified = $gateway->verifyWebhook($payload, $notification->signature);
             $response = $verified ? $gateway->parseWebhook($payload) : null;
         } else {
-            throw new \LogicException("Gateway [{$gateway->getName()}] does not support webhooks.");
+            throw new LogicException(sprintf(
+                'Gateway [%s] implements neither [%s] nor [%s].',
+                $gateway->getName(),
+                HandlesWebhooks::class,
+                HandlesRawWebhooks::class,
+            ));
         }
 
         if (! $verified) {
@@ -36,7 +45,7 @@ class IncomingNotificationProcessor
         }
 
         $eventId = $response->gatewayEventId ?? $notification->fingerprint();
-        $logModel = config('payline.models.webhook_log', WebhookLog::class);
+        $logModel = Payline::webhookLogModel();
         $storedPayload = config('payline.storage.webhook_payload', true)
             ? $this->redact($payload)
             : [];
@@ -62,9 +71,7 @@ class IncomingNotificationProcessor
         $log->markProcessing($storedPayload, $notification->fingerprint(), $response->eventType);
 
         try {
-            $this->manager
-                ->via($notification->gateway)
-                ->handleResponse($notification->gateway, $response);
+            $this->callbacks->apply($notification->gateway, $response);
 
             event(new WebhookReceived($notification->gateway, $response, $storedPayload));
             $log->markProcessed();
