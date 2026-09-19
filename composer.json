@@ -35,6 +35,9 @@
             "aliases": {
                 "Payline": "XLaravel\\Payline\\Facades\\Payline"
             }
+        },
+        "branch-alias": {
+            "dev-master": "2.0.x-dev"
         }
     },
     "scripts": {
