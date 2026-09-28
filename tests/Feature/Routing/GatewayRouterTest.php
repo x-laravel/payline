@@ -15,14 +15,14 @@ class GatewayRouterTest extends TestCase
         CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.03]);
         CommissionRate::create(['gateway' => 'iyzico', 'installments' => 1, 'rate' => 2.92]);
 
-        $cheapest = app(GatewayRouter::class)->cheapestFor(new CardProfile('Bonus', CardType::Credit));
+        $cheapest = app(GatewayRouter::class)->cheapestFor(new CardProfile(family: 'Bonus', type: CardType::Credit));
 
         $this->assertSame('hoppa', $cheapest);
     }
 
     public function test_returns_null_when_no_rates_exist(): void
     {
-        $cheapest = app(GatewayRouter::class)->cheapestFor(new CardProfile('Bonus', CardType::Credit));
+        $cheapest = app(GatewayRouter::class)->cheapestFor(new CardProfile(family: 'Bonus', type: CardType::Credit));
 
         $this->assertNull($cheapest);
     }
@@ -33,7 +33,7 @@ class GatewayRouterTest extends TestCase
         CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.03]);
         CommissionRate::create(['gateway' => 'qnb', 'installments' => 1, 'rate' => 2.50]);
 
-        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile('Bonus', CardType::Credit));
+        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(family: 'Bonus', type: CardType::Credit));
 
         $this->assertSame(['hoppa', 'qnb', 'iyzico'], array_keys($ranked));
     }
@@ -45,16 +45,26 @@ class GatewayRouterTest extends TestCase
         CommissionRate::create(['gateway' => 'qnb', 'card_family' => null, 'installments' => 1, 'rate' => 1.00]);
         CommissionRate::create(['gateway' => 'qnb', 'card_family' => 'Bonus', 'installments' => 1, 'rate' => 3.00]);
 
-        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile('Bonus', CardType::Credit));
+        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(family: 'Bonus', type: CardType::Credit));
 
         $this->assertSame(3.00, $ranked['qnb']);
+    }
+
+    public function test_a_profile_without_a_family_or_type_only_matches_wildcard_rates(): void
+    {
+        CommissionRate::create(['gateway' => 'hoppa', 'card_family' => null, 'card_type' => null, 'installments' => 1, 'rate' => 2.50]);
+        CommissionRate::create(['gateway' => 'qnb', 'card_family' => 'Bonus', 'card_type' => 'credit', 'installments' => 1, 'rate' => 1.00]);
+
+        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(issuerCountry: 'DE'));
+
+        $this->assertSame(['hoppa' => 2.50], $ranked);
     }
 
     public function test_wildcard_rate_applies_when_no_specific_match(): void
     {
         CommissionRate::create(['gateway' => 'hoppa', 'card_family' => null, 'installments' => 1, 'rate' => 2.50]);
 
-        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile('Axess', CardType::Credit));
+        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(family: 'Axess', type: CardType::Credit));
 
         $this->assertArrayHasKey('hoppa', $ranked);
         $this->assertSame(2.50, $ranked['hoppa']);
@@ -65,7 +75,7 @@ class GatewayRouterTest extends TestCase
         CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.03]);
         CommissionRate::create(['gateway' => 'iyzico', 'installments' => 1, 'rate' => 2.92])->delete();
 
-        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile('Bonus', CardType::Credit));
+        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(family: 'Bonus', type: CardType::Credit));
 
         $this->assertArrayHasKey('hoppa', $ranked);
         $this->assertArrayNotHasKey('iyzico', $ranked);
@@ -76,7 +86,7 @@ class GatewayRouterTest extends TestCase
         CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.03]);
         CommissionRate::create(['gateway' => 'iyzico', 'installments' => 3, 'rate' => 1.50]);
 
-        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile('Bonus', CardType::Credit), installments: 3);
+        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(family: 'Bonus', type: CardType::Credit), installments: 3);
 
         $this->assertArrayHasKey('iyzico', $ranked);
         $this->assertArrayNotHasKey('hoppa', $ranked);

@@ -25,9 +25,28 @@ A named gateway is used as given, after a check that it supports the operation. 
 
 ## The Card Profile
 
-Routing needs to know what kind of card it is looking at. That is a `CardProfile`: a card family such as `Bonus` or `Maximum`, and a `CardType` of `credit`, `debit` or `foreign_credit`.
+Routing needs to know what kind of card it is looking at. That is a `CardProfile`. Every field is optional, because no BIN lookup service reports all of them: a provider fills what it knows and leaves the rest null.
 
-Payline reads the profile from the card, then from the request:
+| Field | Type | Meaning |
+|-------|------|---------|
+| `bin` | `?string` | The eight digits the profile was resolved from |
+| `scheme` | `?CardScheme` | `visa`, `mastercard`, `amex`, `troy`, `discover`, `diners`, `jcb`, `unionpay`, `maestro` |
+| `localSchemes` | `CardScheme[]` | Further schemes a co-badged card carries |
+| `type` | `?CardType` | `credit`, `debit`, `prepaid`, `charge` |
+| `category` | `?CardCategory` | `consumer` or `commercial` |
+| `family` | `?string` | Loyalty program such as `bonus`, `axess`, `maximum`, `paraf` |
+| `productId` | `?string` | Issuer product code, such as `F` |
+| `productType` | `?string` | Product tier, such as `classic` or `platinum` |
+| `issuer` | `?string` | Issuing bank |
+| `issuerCode` | `?string` | Issuing bank code |
+| `issuerCountry` | `?string` | ISO 3166-1 alpha-2 |
+| `currency` | `?string` | ISO 4217 currency of the issuing country |
+| `prepaid` | `?bool` | Set when a provider reports it apart from `type` |
+| `numberLength` | `?int` | Digits the full card number has |
+| `source` | `?string` | Name of the provider that answered |
+| `raw` | `array` | The provider's untouched payload |
+
+Commission routing reads `family` and `type`. The rest is there for policies and for anyone reading a stored payment later.
 
 ```php
 use XLaravel\Payline\DTOs\CardProfile;
@@ -35,11 +54,22 @@ use XLaravel\Payline\Enums\CardType;
 
 $order->pay()
     ->card($card)
-    ->cardProfile(new CardProfile('Bonus', CardType::Credit))
+    ->cardProfile(new CardProfile(family: 'bonus', type: CardType::Credit))
     ->charge();
 ```
 
-Without a profile there is nothing to rank on, and Payline uses the default gateway.
+Without a profile there is nothing to rank on, and Payline uses the default gateway. A profile whose `family` and `type` are both null matches only the wildcard rates.
+
+Four helpers answer the questions a routing policy usually asks. Neither country method assumes a home country, and both answer `false` when the issuing country is unknown, because an absent country is not evidence either way:
+
+```php
+$profile->issuedIn('TR');
+$profile->issuedOutside('TR');
+$profile->isCoBadged();             // carries more than one scheme
+$profile->supports(CardScheme::Troy);
+```
+
+`CardScheme`, `CardType` and `CardCategory` each carry a `parse()` that takes a provider's spelling and returns the case or null. `MASTER_CARD`, `MASTERCARD` and `master card` all reach `CardScheme::Mastercard`, so a gateway package never writes its own mapping table.
 
 ## BIN Lookup
 
@@ -65,6 +95,8 @@ $this->app->make('payline.bin_lookup')->extend(
 ```
 
 Point `payline.bin_lookup.default` at the driver name and put its settings under `payline.bin_lookup.drivers.<name>`. A provider implements `BinLookupProvider`, which receives the eight digit BIN and returns a `CardProfile` or `null`.
+
+The settings array carries `test_mode` the way a gateway's does, so a provider with a test environment of its own chooses between its addresses without reading the global configuration.
 
 ## Commission Rates
 
@@ -155,7 +187,7 @@ A commission row naming a gateway that is not registered is skipped rather than 
 To show the customer which provider would be used, or to price a basket, ask without starting a payment:
 
 ```php
-$gateway = Payline::cheapestFor(new CardProfile('Bonus', CardType::Credit), installments: 3);
+$gateway = Payline::cheapestFor(new CardProfile(family: 'bonus', type: CardType::Credit), installments: 3);
 ```
 
 The answer is the cheapest gateway name from the rate table, or `null` when nothing matches. It considers commission only, not capabilities or policies.

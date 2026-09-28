@@ -171,4 +171,8 @@ A notification arriving while its log row is `processing` or `processed` is igno
 
 `PaymentMethod`: `credit_card`, `debit_card`, `bank_transfer`, `token`.
 
-`CardType`: `credit`, `debit`, `foreign_credit`.
+`CardType`: `credit`, `debit`, `prepaid`, `charge`.
+
+`CardScheme`: `visa`, `mastercard`, `amex`, `troy`, `discover`, `diners`, `jcb`, `unionpay`, `maestro`.
+
+`CardCategory`: `consumer`, `commercial`.

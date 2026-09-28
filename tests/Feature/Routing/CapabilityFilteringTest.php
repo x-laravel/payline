@@ -71,7 +71,7 @@ class CapabilityFilteringTest extends TestCase
         CommissionRate::create(['gateway' => 'fake', 'installments' => 1, 'rate' => 2.00]);
 
         $gateway = app(GatewayResolver::class)->forRequest(
-            $this->request(currency: 'USD', profile: new CardProfile('Bonus', CardType::Credit)),
+            $this->request(currency: 'USD', profile: new CardProfile(family: 'Bonus', type: CardType::Credit)),
             TransactionType::Payment,
             null,
             true,
@@ -86,7 +86,7 @@ class CapabilityFilteringTest extends TestCase
         CommissionRate::create(['gateway' => 'fake', 'installments' => 1, 'rate' => 2.00]);
 
         $gateway = app(GatewayResolver::class)->forRequest(
-            $this->request(profile: new CardProfile('Bonus', CardType::Credit)),
+            $this->request(profile: new CardProfile(family: 'Bonus', type: CardType::Credit)),
             TransactionType::Payment,
             null,
             true,
@@ -101,7 +101,7 @@ class CapabilityFilteringTest extends TestCase
         CommissionRate::create(['gateway' => 'limited', 'installments' => 1, 'rate' => 1.00]);
 
         $gateway = app(GatewayResolver::class)->forRequest(
-            $this->request(profile: new CardProfile('Bonus', CardType::Credit)),
+            $this->request(profile: new CardProfile(family: 'Bonus', type: CardType::Credit)),
             TransactionType::Payment,
             null,
             true,

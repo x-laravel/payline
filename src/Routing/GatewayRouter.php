@@ -26,7 +26,7 @@ class GatewayRouter
 
         $rates = $model::query()
             ->where(fn ($q) => $q->where('card_family', $profile->family)->orWhereNull('card_family'))
-            ->where(fn ($q) => $q->where('card_type', $profile->type->value)->orWhereNull('card_type'))
+            ->where(fn ($q) => $q->where('card_type', $profile->type?->value)->orWhereNull('card_type'))
             ->where('installments', $installments)
             ->orderByRaw('(card_family IS NOT NULL) + (card_type IS NOT NULL) DESC')
             ->orderBy('rate')

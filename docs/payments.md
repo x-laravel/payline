@@ -115,7 +115,7 @@ The payable is also what links the payment to the model. You never pass the mode
 | `billingAddress(Address)` | Billing address |
 | `shippingAddress(Address)` | Shipping address |
 | `metadata(array)` | Stored on the payment and the transaction |
-| `cardProfile(CardProfile)` | Card family and type, used by commission routing |
+| `cardProfile(CardProfile)` | What is known about the card, used by commission routing |
 | `idempotencyKey(string)` | See [Idempotency](#idempotency) |
 
 `for()` and `by()` set the payable and the owner. `$model->pay()` sets the payable for you when the model implements `Payable`.
