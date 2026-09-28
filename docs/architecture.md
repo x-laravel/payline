@@ -35,7 +35,9 @@ A refund transaction reports `successful` for its own amount. Whether the paymen
 
 Both delegate the same sequence. `GatewayResolver` picks the driver and verifies that it supports the operation. `TransactionRecorder` opens a database transaction, resolves idempotency, applies the amount ceiling and writes the row. `GatewayInvoker` checks the capability contract and calls the provider method. `TransactionRunner` catches what comes back, hands it to `TransactionUpdater`, and dispatches the lifecycle event only when the recorded status actually changed.
 
-`TransactionRunner` treats an exception and an unrecognisable response the same way: the transaction is marked `unknown` rather than failed, a `PaymentErrored` event is dispatched, and the original exception is rethrown. A timeout is not a decline, and recording it as one would let the application ship goods it was never paid for, or refuse money it already took.
+`TransactionRunner` treats an exception and an unrecognisable response the same way: the transaction is marked `unknown` rather than failed and a `PaymentErrored` event is dispatched. A timeout is not a decline, and recording it as one would let the application ship goods it was never paid for, or refuse money it already took.
+
+What happens next depends on whose fault it was. A `ConnectionException`, which is Laravel's HTTP client saying it could not reach the provider or gave up waiting, is returned as an `Unknown` response, so the caller reads a status rather than handling an exception for the most common cause of an unknown transaction. Every other exception is rethrown, because it is the driver's own fault rather than the provider's silence, and hiding it would hide a bug.
 
 ## The Incoming Path
 

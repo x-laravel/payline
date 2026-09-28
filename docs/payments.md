@@ -7,6 +7,8 @@
 - [Charging Without a Payable](#charging-without-a-payable)
 - [Authorizing Instead of Charging](#authorizing-instead-of-charging)
 - [Handling the Response](#handling-the-response)
+- [The Gap Between Approved and Failed](#the-gap-between-approved-and-failed)
+- [What a Response Carries](#what-a-response-carries)
 - [Idempotency](#idempotency)
 - [Building the Request Yourself](#building-the-request-yourself)
 - [The Raw Gateway](#the-raw-gateway)
@@ -172,6 +174,44 @@ if ($response->isFailure()) {
 | `isPending()` | status is `pending` |
 | `isFailure()` | status is `failed` or `expired` |
 | `requiresRedirect()` | a redirect URL or an HTML form was returned |
+
+## The Gap Between Approved and Failed
+
+None of those methods covers `unknown`, and that is deliberate: an unknown outcome is neither. Branching on `isFailure()` alone reports an unknown result as a success, which is how an operator ends up retrying an operation the provider already carried out. Decide what the operation does in that case:
+
+```php
+if ($response->status === TransactionStatus::Unknown) {
+    abort(422, 'The bank did not answer. The operation may have gone through, so do not retry it.');
+}
+
+abort_unless($response->isApproved(), 422, $response->errorMessage ?? 'The payment did not go through.');
+```
+
+This is the common case rather than an edge case: a provider Payline could not reach returns `Unknown` instead of throwing, so an unreachable provider arrives here rather than in an exception handler. Reconciliation settles the transaction afterwards.
+
+## What a Response Carries
+
+| Property | Type | Meaning |
+|----------|------|---------|
+| `status` | `TransactionStatus` | Outcome of this one call |
+| `type` | `TransactionType` | Operation the answer belongs to |
+| `gatewayName` | `string` | Driver that produced it |
+| `gatewayTransactionId` | `?string` | Provider's identifier for the transaction |
+| `gatewayOrderId` | `?string` | Provider's identifier for the order |
+| `gatewayAuthCode` | `?string` | Bank authorization code |
+| `gatewayResponseCode` | `?string` | Provider's own result code |
+| `gatewayResponseMessage` | `?string` | Provider's own message |
+| `amount` | `int` | Confirmed amount in the minor unit; `0` means the request amount stands |
+| `currency` | `?string` | `null` when the provider reports none |
+| `redirectUrl` / `redirectForm` | `?string` | 3D Secure handoff |
+| `errorCode` / `errorMessage` | `?string` | Set on a failure |
+| `metadata` | `?array` | Merged into the transaction metadata, provider wins |
+| `eventType` / `gatewayEventId` | `?string` | Webhook identifiers |
+| `expiresAt` | `?DateTimeInterface` | Deadline for a pending or authorized transaction |
+| `refundedAmount` | `?int` | Refunded total on the order, from a status query |
+| `voided` | `?bool` | Whether the order was cancelled, from a status query |
+
+`currency`, `refundedAmount` and `voided` are `null` when the provider makes no claim, which is not the same as reporting a currency, zero refunds or no cancellation. A driver never fills them with a guess.
 
 After a redirect the outcome arrives on the callback route; see [Callbacks and Webhooks](callbacks-and-webhooks.md).
 

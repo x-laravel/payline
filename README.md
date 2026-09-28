@@ -159,6 +159,16 @@ if ($response->isFailure()) {
 
 `PaymentResponse` provides `isSuccessful()`, `isApproved()`, `isPending()`, `isFailure()`, and `requiresRedirect()`.
 
+None of them covers `unknown`, which is neither approved nor failed. Branching on `isFailure()` alone reports an unknown result as a success, so handle it before the other two:
+
+```php
+if ($response->status === TransactionStatus::Unknown) {
+    abort(422, 'The bank did not answer. The operation may have gone through, so do not retry it.');
+}
+```
+
+A provider Payline could not reach returns `Unknown` rather than throwing, so this is where an unreachable provider arrives. Reconciliation settles the transaction afterwards. See [Payments](docs/payments.md#the-gap-between-approved-and-failed).
+
 ## Idempotency
 
 Use a stable key for every retryable operation:
@@ -287,7 +297,7 @@ Drivers that sign the raw request must implement `HandlesRawWebhooks`. Providers
 
 ## Reconciliation
 
-Provider timeouts and ambiguous errors are recorded as `unknown` instead of being treated as declined payments. Drivers implementing `QueriesPayments` can reconcile pending and unknown records:
+Provider timeouts and ambiguous errors are recorded as `unknown` instead of being treated as declined payments. A provider Payline could not reach returns an `Unknown` response rather than throwing, so the caller reads a status; every other exception is still rethrown. Drivers implementing `QueriesPayments` can reconcile pending and unknown records:
 
 ```php
 $response = Payline::payment($payment)->reconcile();

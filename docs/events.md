@@ -25,8 +25,8 @@ All lifecycle events carry the same three properties.
 | `PaymentSucceeded` | A payment transaction moved to `successful` |
 | `PaymentAuthorized` | An authorization transaction moved to `authorized` |
 | `PaymentCaptured` | A capture transaction moved to `successful` |
-| `PaymentRefunded` | A refund transaction changed status |
-| `PaymentVoided` | A void transaction changed status |
+| `PaymentRefunded` | A refund transaction moved to `successful` |
+| `PaymentVoided` | A void transaction moved to `voided` |
 | `PaymentFailed` | Any transaction moved to `failed` or `expired` |
 
 | Property | Type |
@@ -39,7 +39,9 @@ All lifecycle events carry the same three properties.
 
 `PaymentFailed` takes precedence over the operation specific events. A failed capture dispatches `PaymentFailed`, not `PaymentCaptured`.
 
-`PaymentRefunded` and `PaymentVoided` are dispatched for every status change on those transaction types that is not a failure, including a move to `pending`. Check `$response->isSuccessful()` in the listener when only a settled refund should count.
+Every event is chosen from the status that was recorded on the transaction, not from the status the provider reported. The two differ when Payline overrules the provider: a pending answer for a transaction past its deadline is recorded as `expired`, which dispatches `PaymentFailed` while `$response->status` still reads `pending`. Read `$event->transaction->status` in a listener that needs the outcome, and treat `$event->response` as what the provider said.
+
+A refund or a void that did not settle dispatches nothing. An unanswered refund is `unknown`, which is neither a refund nor a failure, and reconciliation settles it later; see [Follow-up Operations](follow-up-operations.md).
 
 ## Error Events
 
@@ -47,7 +49,9 @@ All lifecycle events carry the same three properties.
 |-------|-----------------|------------|
 | `PaymentErrored` | The provider call threw, or returned a response Payline could not accept | `$payment`, `$transaction`, `$exception` |
 
-The transaction has been marked `unknown` by the time the event fires, and the original exception is rethrown afterwards. A listener should treat this as "the outcome is not known yet", not as a failure. Reconciliation resolves these; see [Follow-up Operations](follow-up-operations.md).
+The transaction has been marked `unknown` by the time the event fires. A listener should treat this as "the outcome is not known yet", not as a failure. Reconciliation resolves these; see [Follow-up Operations](follow-up-operations.md).
+
+A provider Payline could not reach returns an `Unknown` response to the caller, while any other exception is rethrown after the event. Either way the event fires and the transaction is `unknown`, so a listener does not need to tell the two apart.
 
 ## Inbound Events
 
