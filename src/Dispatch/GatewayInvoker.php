@@ -1,6 +1,6 @@
 <?php
 
-namespace XLaravel\Payline\Gateway;
+namespace XLaravel\Payline\Dispatch;
 
 use LogicException;
 use XLaravel\Payline\Contracts\Gateway;

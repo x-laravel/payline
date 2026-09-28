@@ -3,7 +3,7 @@
 - [Requirements](#requirements)
 - [Install the Package](#install-the-package)
 - [Publish and Run the Migrations](#publish-and-run-the-migrations)
-- [Install a Driver](#install-a-driver)
+- [Install a Gateway](#install-a-gateway)
 - [Publish the Configuration](#publish-the-configuration)
 - [Use a Dedicated Connection](#use-a-dedicated-connection)
 - [Verify the Installation](#verify-the-installation)
@@ -14,7 +14,7 @@ This page takes an application that has never run Payline to a working setup. Fo
 
 - PHP 8.3 or newer
 - Laravel 12 or 13
-- One Payline gateway driver package
+- One Payline gateway package
 
 ## Install the Package
 
@@ -37,9 +37,9 @@ This creates four tables: `payline_payments`, `payline_transactions`, `payline_w
 
 Skipping this step leaves the application without any Payline table, and the first charge fails on a missing table rather than on a missing migration.
 
-## Install a Driver
+## Install a Gateway
 
-Payline itself talks to no provider. Install the driver package for the provider you use and follow its own installation notes, then add its credentials under `payline.gateways`:
+Payline itself talks to no provider. Install the gateway package for the provider you use and follow its own installation notes, then add its credentials under `payline.gateways`:
 
 ```php
 'gateways' => [
@@ -54,7 +54,7 @@ Payline itself talks to no provider. Install the driver package for the provider
 Name the default gateway in the environment:
 
 ```shell
-PAYLINE_DRIVER=iyzico
+PAYLINE_GATEWAY=iyzico
 ```
 
 Resolving a gateway without a configured default throws a `RuntimeException`.

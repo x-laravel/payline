@@ -86,15 +86,15 @@ trait HasPayline
 
     /**
      * $order->pay()           → GatewayRouter selects the cheapest gateway (PaymentRequest::$cardProfile required)
-     * $order->pay('iyzico')   → explicit driver
+     * $order->pay('iyzico')   → explicit gateway
      */
-    public function pay(?string $driver = null): PendingPayment
+    public function pay(?string $gateway = null): PendingPayment
     {
         /** @var PaylineManager $manager */
         $manager = app('payline');
 
-        $pending = $driver !== null
-            ? $manager->via($driver)
+        $pending = $gateway !== null
+            ? $manager->via($gateway)
             : $manager->viaAuto();
 
         if ($this instanceof \XLaravel\Payline\Contracts\Payable) {

@@ -1,6 +1,6 @@
 <?php
 
-namespace XLaravel\Payline\Gateway;
+namespace XLaravel\Payline\Dispatch;
 
 use LogicException;
 use XLaravel\Payline\Contracts\Gateway;
@@ -36,12 +36,12 @@ class GatewayResolver
         $profile = $data->card?->profile ?? $data->cardProfile;
 
         if ($autoRoute && $profile !== null) {
-            foreach (array_keys($this->router->rankedFor($profile, $data->installments ?? 1)) as $driver) {
-                if (! $this->manager->hasDriver($driver)) {
+            foreach (array_keys($this->router->rankedFor($profile, $data->installments ?? 1)) as $name) {
+                if (! $this->manager->hasGateway($name)) {
                     continue;
                 }
 
-                $gateway = $this->manager->driver($driver);
+                $gateway = $this->manager->gateway($name);
 
                 if ($this->supports($gateway, $data, $type)) {
                     return $gateway;
@@ -49,7 +49,7 @@ class GatewayResolver
             }
         }
 
-        $gateway = $this->manager->driver();
+        $gateway = $this->manager->gateway();
         $this->assertSupports($gateway, $data, $type);
 
         return $gateway;
@@ -58,7 +58,7 @@ class GatewayResolver
     public function forPayment(Payment $payment, ?Gateway $preferred = null): Gateway
     {
         if ($preferred === null) {
-            return $this->manager->driver($payment->gateway);
+            return $this->manager->gateway($payment->gateway);
         }
 
         if ($preferred->getName() !== $payment->gateway) {

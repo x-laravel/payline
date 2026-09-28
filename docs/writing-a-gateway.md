@@ -1,20 +1,22 @@
-# Writing a Driver
+# Writing a Gateway
 
-- [What a Driver Is](#what-a-driver-is)
+- [What a Gateway Is](#what-a-gateway-is)
 - [Contracts](#contracts)
-- [A Minimal Driver](#a-minimal-driver)
-- [Registering the Driver](#registering-the-driver)
+- [A Minimal Gateway](#a-minimal-gateway)
+- [Registering the Gateway](#registering-the-gateway)
 - [Declaring Capabilities](#declaring-capabilities)
 - [Mapping Provider Results to Statuses](#mapping-provider-results-to-statuses)
 - [Returning a Redirect](#returning-a-redirect)
 - [Handling Callbacks](#handling-callbacks)
 - [Handling Webhooks](#handling-webhooks)
 - [Supporting Reconciliation](#supporting-reconciliation)
-- [Testing a Driver](#testing-a-driver)
+- [Testing a Gateway](#testing-a-gateway)
 
-## What a Driver Is
+## What a Gateway Is
 
-A driver is a separate Composer package holding one class that speaks the provider's protocol, and a service provider that registers it with Payline. It receives DTOs, returns a `PaymentResponse`, and does nothing else. Persistence, idempotency, ceilings, events and routing stay in Payline.
+A gateway is a separate Composer package holding one class that speaks the provider's protocol, and a service provider that registers it with Payline. It receives DTOs, returns a `PaymentResponse`, and does nothing else. Persistence, idempotency, ceilings, events and routing stay in Payline.
+
+The gateways published alongside Payline live under `XLaravel\Payline\Gateways\<Provider>`, one segment per provider. Payline itself never declares a class under that namespace, so it belongs to gateway packages alone. A gateway published by anyone else uses its own vendor namespace; nothing in Payline reads the namespace, only the name `getName()` returns.
 
 ## Contracts
 
@@ -37,7 +39,7 @@ Implement `Gateway` plus one interface per operation you support. Implement noth
 
 Defining a method without implementing its contract does not work. See [decision 0001](decisions/0001-capability-contracts-are-mandatory.md).
 
-## A Minimal Driver
+## A Minimal Gateway
 
 ```php
 use XLaravel\Payline\Contracts\ChargesPayments;
@@ -78,9 +80,9 @@ class MyGateway implements ChargesPayments, Gateway
 
 `gatewayName` must equal `getName()` and `type` must equal the operation that was requested. A response that disagrees with either is treated as unusable: the transaction is marked `unknown` and an `UnexpectedGatewayResponseException` is thrown. The same applies to a currency that differs from the transaction.
 
-## Registering the Driver
+## Registering the Gateway
 
-Register from the driver package's service provider, in `boot()`:
+Register from the gateway package's service provider, in `boot()`:
 
 ```php
 public function boot(): void
@@ -92,7 +94,7 @@ public function boot(): void
 }
 ```
 
-The closure receives the container and `config('payline.gateways.my-gateway')`, which is an empty array when the key is absent. The instance is cached per driver name for the lifetime of the manager, so keep it free of per request state.
+The closure receives the container and `config('payline.gateways.my-gateway')`, which is an empty array when the key is absent. The instance is cached per gateway name for the lifetime of the manager, so keep it free of per request state.
 
 ## Declaring Capabilities
 
@@ -133,7 +135,7 @@ An empty array means no restriction on that dimension. `partialRefunds`, `webhoo
 
 Return `Unknown` rather than `Failed` when the answer cannot be parsed. `Failed` is a settled state and closes the transaction; `Unknown` leaves it open for reconciliation.
 
-A driver does not have to catch a connection failure. Laravel's HTTP client throws `ConnectionException` when it cannot reach the provider or the request times out, and Payline records the transaction as `unknown` and returns an `Unknown` response, so a caller only ever reads a status. Every other exception is recorded the same way and then rethrown, because it is the driver's own fault rather than the provider's silence.
+A gateway does not have to catch a connection failure. Laravel's HTTP client throws `ConnectionException` when it cannot reach the provider or the request times out, and Payline records the transaction as `unknown` and returns an `Unknown` response, so a caller only ever reads a status. Every other exception is recorded the same way and then rethrown, because it is the gateway's own fault rather than the provider's silence.
 
 Providers usually report an order whose customer never finished 3D Secure as a failure, with a code that means "not completed". Return `Pending` for it, not `Failed`: the same answer comes back for a customer who is still on the provider's page, and `Failed` would close a transaction that is about to succeed. Payline turns a pending answer into `Expired` once the transaction is past its deadline.
 
@@ -197,7 +199,7 @@ Set `gatewayEventId` on the response when the provider sends its own event id. P
 
 Set `eventType` when the provider names the event; it is stored on the log row.
 
-Never return `true` from a verification method that does not verify. A driver without real signature verification should implement neither webhook contract.
+Never return `true` from a verification method that does not verify. A gateway without real signature verification should implement neither webhook contract.
 
 ## Supporting Reconciliation
 
@@ -237,11 +239,11 @@ public function commissionRates(): array
 }
 ```
 
-`rate` is a percentage, so 2.03 means 2.03%. Ranking compares it against every other gateway's rows, so a driver reporting a fraction where the rest report a percentage wins every comparison. Leave `cardType` and `blockingDays` null when the provider does not report them.
+`rate` is a percentage, so 2.03 means 2.03%. Ranking compares it against every other gateway's rows, so a gateway reporting a fraction where the rest report a percentage wins every comparison. Leave `cardType` and `blockingDays` null when the provider does not report them.
 
-## Testing a Driver
+## Testing a Gateway
 
-Test the driver against faked HTTP, not against Payline. Each test asserts the request body sent to the provider and the `PaymentResponse` mapped back:
+Test the gateway against faked HTTP, not against Payline. Each test asserts the request body sent to the provider and the `PaymentResponse` mapped back:
 
 ```php
 Http::fake(['*/payments' => Http::response(['ok' => true, 'id' => 'TXN-1'])]);

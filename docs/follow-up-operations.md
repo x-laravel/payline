@@ -19,7 +19,7 @@ use XLaravel\Payline\Facades\Payline;
 $operations = Payline::payment($payment);
 ```
 
-Payline uses the gateway that owns the payment. Passing a different driver throws a `LogicException`, because a provider cannot settle a transaction it never created.
+Payline uses the gateway that owns the payment. Passing a different gateway throws a `LogicException`, because a provider cannot settle a transaction it never created.
 
 Each operation finds its own parent transaction. Capture looks for the latest `authorized` authorization; void looks for the same, then for the latest `successful` payment; refund looks for the latest `successful` payment or capture. When none exists, the call throws a `LogicException` before anything is recorded.
 
@@ -90,7 +90,7 @@ A provider call that timed out leaves the transaction `unknown`, which means Pay
 $response = Payline::payment($payment)->reconcile();
 ```
 
-The driver must implement `QueriesPayments`. Providers answer a status query about the order, not about one operation on it, so Payline asks about the sale or the authorization and applies the answer to that transaction through the same state machine as any other response.
+The gateway must implement `QueriesPayments`. Providers answer a status query about the order, not about one operation on it, so Payline asks about the sale or the authorization and applies the answer to that transaction through the same state machine as any other response.
 
 A refund or a void whose own call was never answered stays open. Payline settles those from the same order snapshot: `PaymentResponse::$refundedAmount` and `PaymentResponse::$voided` say how much the provider has returned and whether the order was cancelled, and each open follow-up is recorded as successful when the order accounts for it and failed when it does not. Without those two fields the follow-up is left open, which is what happens when the provider cannot find the order at all.
 
@@ -105,7 +105,7 @@ php artisan payline:reconcile
 php artisan payline:reconcile --gateway=iyzico --limit=50
 ```
 
-Most of what the command finds are 3D Secure pages the customer walked away from. The provider answers those with "not completed", which a driver reports as `Pending`, and Payline records it as `expired` once the transaction is past its deadline. See [transactions](configuration.md#transactions) for where that deadline comes from.
+Most of what the command finds are 3D Secure pages the customer walked away from. The provider answers those with "not completed", which a gateway reports as `Pending`, and Payline records it as `expired` once the transaction is past its deadline. See [transactions](configuration.md#transactions) for where that deadline comes from.
 
 The command processes the least recently updated payments first, defaults to 100 per run, reports failures through Laravel's exception handler, and exits with a failure code when any payment could not be reconciled.
 
@@ -136,8 +136,8 @@ $order->amountNet();
 | `LogicException` | Payment has no authorized authorization transaction. | Capture on a payment that was charged rather than authorized |
 | `LogicException` | Payment has no authorization or sale to void. | Void on a payment that never succeeded |
 | `LogicException` | Payment has no successful transaction to refund. | Refund before any money was collected |
-| `LogicException` | Follow-up operations must use the payment gateway [x], [y] given. | A driver other than the one that owns the payment |
-| `LogicException` | Gateway [x] does not implement [y]. | The driver does not support the operation |
+| `LogicException` | Follow-up operations must use the payment gateway [x], [y] given. | A gateway other than the one that owns the payment |
+| `LogicException` | Gateway [x] does not implement [y]. | The gateway does not support the operation |
 | `InvalidPaymentOperationException` | Only an authorized or partially captured payment can be captured. | The payment is already settled |
 | `InvalidPaymentOperationException` | Only a paid payment can be refunded. | The payment holds no outstanding amount |
 | `InvalidPaymentOperationException` | Only an authorized payment or an unrefunded sale can be voided. | Money was captured, or part of a sale was refunded |

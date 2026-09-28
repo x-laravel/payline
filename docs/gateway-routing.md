@@ -16,12 +16,12 @@
 Merchants often hold accounts with several providers whose commission differs by card. Payline can pick the cheapest one that is able to take the payment.
 
 ```php
-$order->pay('iyzico')->card($card)->charge();   // named driver
+$order->pay('iyzico')->card($card)->charge();   // named gateway
 $order->pay()->card($card)->charge();           // commission routing
 Payline::via()->charge();                       // the configured default
 ```
 
-A named driver is used as given, after a check that it supports the operation. An unsupported operation throws a `LogicException` rather than silently falling back to another provider.
+A named gateway is used as given, after a check that it supports the operation. An unsupported operation throws a `LogicException` rather than silently falling back to another provider.
 
 ## The Card Profile
 
@@ -55,7 +55,7 @@ $order->pay()->card($card)->installments(3)->charge();
 
 `resolveProfile()` returns a new `Card` carrying the profile, or the same card when the lookup finds nothing.
 
-The manager is a driver manager like `payline`. The default driver is `null`, which resolves nothing, so commission routing does nothing until a provider is registered:
+The manager registers drivers the way `payline` registers gateways. The default driver is `null`, which resolves nothing, so commission routing does nothing until a provider is registered:
 
 ```php
 $this->app->make('payline.bin_lookup')->extend(
@@ -72,7 +72,7 @@ Rates live in `payline_commission_rates`, one row per gateway, card family, card
 
 | Column | Meaning |
 |--------|---------|
-| `gateway` | The driver name |
+| `gateway` | The gateway name |
 | `card_family` | Card family, or `null` for any family |
 | `card_type` | Card type, or `null` for any type |
 | `installments` | Installment count the rate applies to |
@@ -83,7 +83,7 @@ The table uses soft deletes, so a rate can be withdrawn without losing the histo
 
 ## Reading Rates From the Provider
 
-Some providers publish the rates they charge. A driver that implements `ProvidesCommissionRates` returns them, and one command writes them into the table:
+Some providers publish the rates they charge. A gateway that implements `ProvidesCommissionRates` returns them, and one command writes them into the table:
 
 ```shell
 php artisan payline:sync-rates
@@ -94,7 +94,7 @@ A row is identified by gateway, card family, card type and installment count, so
 
 A provider that reports no card type leaves the column null, which the matching above treats as a wildcard.
 
-The command fails when a named gateway is not registered or a provider refuses the listing, and skips a driver that does not implement the contract.
+The command fails when a named gateway is not registered or a provider refuses the listing, and skips a gateway that does not implement the contract.
 
 ## How a Rate Is Matched
 
@@ -108,7 +108,7 @@ Installment matching is exact. A card paying in three installments does not matc
 
 Payline walks the ranked gateways from cheapest to most expensive and takes the first that passes three checks.
 
-The first is the capability contract: the driver must implement the interface for the operation. The second applies only to drivers implementing `ProvidesGatewayCapabilities`, and filters on the operation, payment method, currency, installment count and 3D Secure support declared there. An empty list in a `GatewayCapabilities` field means the driver does not restrict that dimension.
+The first is the capability contract: the gateway must implement the interface for the operation. The second applies only to gateways implementing `ProvidesGatewayCapabilities`, and filters on the operation, payment method, currency, installment count and 3D Secure support declared there. An empty list in a `GatewayCapabilities` field means the gateway does not restrict that dimension.
 
 The third is the policy pipeline.
 
@@ -142,13 +142,13 @@ class CurrencyPolicy implements GatewayRoutingPolicy
 
 Policies are resolved from the container, so they may take dependencies. Every policy must allow the gateway; the first refusal moves routing to the next candidate. A configured class that does not implement the contract throws a `LogicException`.
 
-Policies run for a named driver too, not only during commission routing.
+Policies run for a named gateway too, not only during commission routing.
 
 ## Falling Back
 
 Payline uses the configured default gateway when there is no card profile, when no commission row matches, or when no ranked gateway passes the checks. The default is then checked the same way, and an unsupported operation throws a `LogicException`.
 
-A commission row naming a gateway that is not registered is skipped rather than resolved, so removing a driver from the configuration does not break payments whose rate rows still mention it.
+A commission row naming a gateway that is not registered is skipped rather than resolved, so removing a gateway from the configuration does not break payments whose rate rows still mention it.
 
 ## Asking Without Paying
 

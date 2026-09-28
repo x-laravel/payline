@@ -9,7 +9,7 @@
 - [Deduplication](#deduplication)
 - [Payload Storage and Redaction](#payload-storage-and-redaction)
 - [Matching a Response to a Transaction](#matching-a-response-to-a-transaction)
-- [Driver Contracts](#driver-contracts)
+- [Gateway Contracts](#gateway-contracts)
 
 ## The Two Inbound Paths
 
@@ -34,7 +34,7 @@ Set `payline.routes.enabled` to `false` and register your own routes when you ne
 
 When a payment request carries no callback URL, Payline fills in its own callback route for the gateway that was selected. The provider sends the customer back there.
 
-`CallbackController` builds a `CallbackData` from the query string, the post body, the headers and the raw body, and passes it to `CallbackHandler::handle()`. The handler asks the driver to interpret it through `HandlesCallbacks`, matches the result to a stored transaction, applies it, and returns a `CallbackResult` holding the response and the transaction.
+`CallbackController` builds a `CallbackData` from the query string, the post body, the headers and the raw body, and passes it to `CallbackHandler::handle()`. The handler asks the gateway to interpret it through `HandlesCallbacks`, matches the result to a stored transaction, applies it, and returns a `CallbackResult` holding the response and the transaction.
 
 The controller then answers the browser as described in [Answering the Browser](#answering-the-browser). In the `breakout` and `redirect` modes it flashes three keys to the session:
 
@@ -103,7 +103,7 @@ In the redirecting modes the status, payment id and transaction id are flashed t
 
 `WebhookController` builds an `IncomingNotification` from the request and hands it to `IncomingNotificationProcessor`. The notification keeps the query string, the parsed body, the headers, the raw body and the signature separately, because a provider that signs the raw bytes needs them unmodified.
 
-The signature is read from `X-Webhook-Signature`, falling back to `X-Gateway-Signature`. A driver that signs differently reads the headers itself through `HandlesRawWebhooks`.
+The signature is read from `X-Webhook-Signature`, falling back to `X-Gateway-Signature`. A gateway that signs differently reads the headers itself through `HandlesRawWebhooks`.
 
 The processor verifies the signature first. A failed verification throws a `WebhookSignatureException`, which the controller turns into a `403`, and nothing is logged. Only a verified notification reaches storage.
 
@@ -129,7 +129,7 @@ When nothing matches, a `CallbackUnmatched` event is dispatched and no row is wr
 
 A matched transaction goes through the same `TransactionUpdater` as an outgoing call, so a webhook cannot move a settled transaction backwards.
 
-## Driver Contracts
+## Gateway Contracts
 
 | Contract | Use |
 |----------|-----|
@@ -137,4 +137,4 @@ A matched transaction goes through the same `TransactionUpdater` as an outgoing 
 | `HandlesWebhooks` | Verifies and parses a normalized array payload |
 | `HandlesRawWebhooks` | Verifies and parses the raw request, for signatures over the exact bytes |
 
-A driver implements `HandlesWebhooks` or `HandlesRawWebhooks`, not both; `HandlesRawWebhooks` is checked first. A driver that implements neither cannot receive webhooks, and the processor throws a `LogicException` rather than accepting an unverified notification.
+A gateway implements `HandlesWebhooks` or `HandlesRawWebhooks`, not both; `HandlesRawWebhooks` is checked first. A gateway that implements neither cannot receive webhooks, and the processor throws a `LogicException` rather than accepting an unverified notification.

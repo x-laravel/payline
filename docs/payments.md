@@ -142,7 +142,7 @@ Charging with neither a payable nor both `reference()` and `amount()` throws a `
 $response = $order->pay('iyzico')->card($card)->authorize();
 ```
 
-A driver must implement `AuthorizesPayments` for this to work; see [Follow-up Operations](follow-up-operations.md).
+A gateway must implement `AuthorizesPayments` for this to work; see [Follow-up Operations](follow-up-operations.md).
 
 ## Handling the Response
 
@@ -195,7 +195,7 @@ This is the common case rather than an edge case: a provider Payline could not r
 |----------|------|---------|
 | `status` | `TransactionStatus` | Outcome of this one call |
 | `type` | `TransactionType` | Operation the answer belongs to |
-| `gatewayName` | `string` | Driver that produced it |
+| `gatewayName` | `string` | Gateway that produced it |
 | `gatewayTransactionId` | `?string` | Provider's identifier for the transaction |
 | `gatewayOrderId` | `?string` | Provider's identifier for the order |
 | `gatewayAuthCode` | `?string` | Bank authorization code |
@@ -211,7 +211,7 @@ This is the common case rather than an edge case: a provider Payline could not r
 | `refundedAmount` | `?int` | Refunded total on the order, from a status query |
 | `voided` | `?bool` | Whether the order was cancelled, from a status query |
 
-`currency`, `refundedAmount` and `voided` are `null` when the provider makes no claim, which is not the same as reporting a currency, zero refunds or no cancellation. A driver never fills them with a guess.
+`currency`, `refundedAmount` and `voided` are `null` when the provider makes no claim, which is not the same as reporting a currency, zero refunds or no cancellation. A gateway never fills them with a guess.
 
 After a redirect the outcome arrives on the callback route; see [Callbacks and Webhooks](callbacks-and-webhooks.md).
 
@@ -248,4 +248,4 @@ The request is validated in its constructor: an empty reference, an amount of ze
 
 ## The Raw Gateway
 
-`Payline::driver('iyzico')` returns the driver itself. Nothing is recorded, validated or deduplicated, and no events are dispatched. Use it while developing a driver, not from application code.
+`Payline::gateway('iyzico')` returns the gateway itself. Nothing is recorded, validated or deduplicated, and no events are dispatched. Use it while developing a gateway, not from application code.

@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'default' => env('PAYLINE_DRIVER'),
+    'default' => env('PAYLINE_GATEWAY'),
 
     'currency' => env('PAYLINE_CURRENCY', 'TRY'),
 

@@ -114,7 +114,7 @@ class SyncCommissionRatesTest extends TestCase
         $this->assertSame(0, CommissionRate::count());
     }
 
-    public function test_without_a_gateway_option_every_registered_driver_is_visited(): void
+    public function test_without_a_gateway_option_every_registered_gateway_is_visited(): void
     {
         RatedGateway::willReturn([new CommissionRateData(rate: 2.03, installments: 1)]);
 

@@ -11,8 +11,8 @@ class PendingPaymentBuilder
         protected readonly Payable $payable,
     ) {}
 
-    public function via(?string $driver = null): PendingPayment
+    public function via(?string $gateway = null): PendingPayment
     {
-        return $this->manager->via($driver)->for($this->payable);
+        return $this->manager->via($gateway)->for($this->payable);
     }
 }

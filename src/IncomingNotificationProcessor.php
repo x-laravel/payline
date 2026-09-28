@@ -22,7 +22,7 @@ class IncomingNotificationProcessor
 
     public function process(IncomingNotification $notification): void
     {
-        $gateway = $this->manager->driver($notification->gateway);
+        $gateway = $this->manager->gateway($notification->gateway);
         $payload = $notification->payload();
 
         if ($gateway instanceof HandlesRawWebhooks) {

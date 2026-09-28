@@ -4,10 +4,10 @@ namespace XLaravel\Payline\Tests\Feature\Routing;
 
 use XLaravel\Payline\DTOs\CardProfile;
 use XLaravel\Payline\DTOs\PaymentRequest;
+use XLaravel\Payline\Dispatch\GatewayResolver;
 use XLaravel\Payline\Enums\CardType;
 use XLaravel\Payline\Enums\PaymentMethod;
 use XLaravel\Payline\Enums\TransactionType;
-use XLaravel\Payline\Gateway\GatewayResolver;
 use XLaravel\Payline\Models\CommissionRate;
 use XLaravel\Payline\Tests\Fixtures\Gateways\LimitedGateway;
 use XLaravel\Payline\Tests\TestCase;
@@ -57,10 +57,10 @@ class CapabilityFilteringTest extends TestCase
         $this->assertFalse($this->supports($this->request(), TransactionType::Refund));
     }
 
-    public function test_a_driver_without_declared_capabilities_restricts_nothing(): void
+    public function test_a_gateway_without_declared_capabilities_restricts_nothing(): void
     {
         $resolver = app(GatewayResolver::class);
-        $fake = $this->app->make('payline')->driver('fake');
+        $fake = $this->app->make('payline')->gateway('fake');
 
         $this->assertTrue($resolver->supports($fake, $this->request(currency: 'USD'), TransactionType::Payment));
     }
@@ -113,7 +113,7 @@ class CapabilityFilteringTest extends TestCase
     private function supports(PaymentRequest $data, TransactionType $type = TransactionType::Payment): bool
     {
         return app(GatewayResolver::class)->supports(
-            $this->app->make('payline')->driver('limited'),
+            $this->app->make('payline')->gateway('limited'),
             $data,
             $type,
         );

@@ -17,18 +17,18 @@ class SyncCommissionRatesCommand extends Command
 
     public function handle(PaylineManager $manager): int
     {
-        $names = $this->option('gateway') ?: $manager->registeredDrivers();
+        $names = $this->option('gateway') ?: $manager->registeredGateways();
         $failed = false;
 
         foreach ($names as $name) {
-            if (! $manager->hasDriver($name)) {
+            if (! $manager->hasGateway($name)) {
                 $this->components->twoColumnDetail($name, '<fg=red>not registered</>');
                 $failed = true;
 
                 continue;
             }
 
-            $gateway = $manager->driver($name);
+            $gateway = $manager->gateway($name);
 
             if (! $gateway instanceof ProvidesCommissionRates) {
                 $this->components->twoColumnDetail($name, '<fg=gray>no rate service</>');

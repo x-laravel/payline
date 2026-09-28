@@ -26,10 +26,10 @@ The file is merged, so an unpublished configuration uses the package defaults an
 
 | Key | Type | Default | Meaning |
 |-----|------|---------|---------|
-| `default` | `?string` | `env('PAYLINE_DRIVER')` | Driver used when none is named |
-| `gateways` | `array` | one `iyzico` example | Per driver settings, keyed by driver name |
+| `default` | `?string` | `env('PAYLINE_GATEWAY')` | Gateway used when none is named |
+| `gateways` | `array` | one `iyzico` example | Per gateway settings, keyed by gateway name |
 
-Each entry under `gateways` is passed to the driver factory as its configuration array. Its contents are defined by the driver package. Resolving a gateway with no `default` set throws a `RuntimeException`.
+Each entry under `gateways` is passed to the gateway factory as its configuration array. Its contents are defined by the gateway package. Resolving a gateway with no `default` set throws a `RuntimeException`.
 
 ## Currency
 
@@ -83,11 +83,11 @@ The `null` driver resolves no card profile, which leaves commission routing inac
 
 | Key | Type | Default | Meaning |
 |-----|------|---------|---------|
-| `transactions.pending_ttl` | `?int` | `env('PAYLINE_PENDING_TTL', 60)` | Minutes a pending transaction may wait for the customer, when the driver names no deadline of its own |
+| `transactions.pending_ttl` | `?int` | `env('PAYLINE_PENDING_TTL', 60)` | Minutes a pending transaction may wait for the customer, when the gateway names no deadline of its own |
 
 A customer who abandons a 3D Secure page leaves the transaction waiting, and providers answer a status query for such an order with "not completed", which is indistinguishable from a customer who is still on the page. Payline settles the difference with time: a pending answer for a transaction that is past its deadline is recorded as `expired` instead.
 
-The deadline is the `expiresAt` the driver returned when it started the payment, and this TTL counted from the transaction's creation when it returned none. Set the key to `null` to let pending transactions wait indefinitely.
+The deadline is the `expiresAt` the gateway returned when it started the payment, and this TTL counted from the transaction's creation when it returned none. Set the key to `null` to let pending transactions wait indefinitely.
 
 An answer that actually settles the transaction always wins over the deadline, so a customer who completes the payment late is still recorded as paid.
 
@@ -141,7 +141,7 @@ Matching is case insensitive and recurses into nested arrays. Redaction happens 
 
 | Variable | Used by |
 |----------|---------|
-| `PAYLINE_DRIVER` | `default` |
+| `PAYLINE_GATEWAY` | `default` |
 | `PAYLINE_CURRENCY` | `currency` |
 | `PAYLINE_DB_CONNECTION` | `database.connection` |
 | `PAYLINE_BIN_LOOKUP_DRIVER` | `bin_lookup.default` |
@@ -149,4 +149,4 @@ Matching is case insensitive and recurses into nested arrays. Redaction happens 
 | `PAYLINE_CALLBACK_SUCCESS_URL` | `callback_success_url` |
 | `PAYLINE_CALLBACK_FAILURE_URL` | `callback_failure_url` |
 
-Driver packages define their own variables under their gateway entry.
+Gateway packages define their own variables under their gateway entry.

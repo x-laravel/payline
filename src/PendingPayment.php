@@ -7,10 +7,10 @@ use XLaravel\Payline\Contracts\Gateway;
 use XLaravel\Payline\Contracts\Payable;
 use XLaravel\Payline\DTOs\PaymentRequest;
 use XLaravel\Payline\DTOs\PaymentResponse;
+use XLaravel\Payline\Dispatch\GatewayInvoker;
+use XLaravel\Payline\Dispatch\GatewayResolver;
 use XLaravel\Payline\Enums\TransactionType;
 use XLaravel\Payline\Events\PaymentInitiated;
-use XLaravel\Payline\Gateway\GatewayInvoker;
-use XLaravel\Payline\Gateway\GatewayResolver;
 use XLaravel\Payline\Payments\TransactionRunner;
 
 class PendingPayment

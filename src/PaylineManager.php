@@ -8,8 +8,8 @@ use RuntimeException;
 use XLaravel\Payline\Contracts\Gateway;
 use XLaravel\Payline\Contracts\Payable;
 use XLaravel\Payline\DTOs\CardProfile;
-use XLaravel\Payline\Gateway\GatewayInvoker;
-use XLaravel\Payline\Gateway\GatewayResolver;
+use XLaravel\Payline\Dispatch\GatewayInvoker;
+use XLaravel\Payline\Dispatch\GatewayResolver;
 use XLaravel\Payline\Models\Payment;
 use XLaravel\Payline\Payments\FollowUpReconciler;
 use XLaravel\Payline\Payments\TransactionRunner;
@@ -21,38 +21,43 @@ class PaylineManager extends Manager
     {
         return $this->config->get('payline.default')
             ?? throw new RuntimeException(
-                'No default Payline gateway configured. Set PAYLINE_DRIVER or payline.default in config.',
+                'No default Payline gateway configured. Set PAYLINE_GATEWAY or payline.default in config.',
             );
     }
 
     /**
      * Returns the raw gateway instance. No transaction recording occurs.
-     * Intended for driver package development and advanced usage.
+     * Intended for gateway package development and advanced usage.
      */
-    public function driver($driver = null): Gateway
+    public function gateway(?string $name = null): Gateway
     {
         /** @var Gateway $instance */
-        $instance = parent::driver($driver);
+        $instance = parent::driver($name);
 
         return $instance;
     }
 
-    public function hasDriver(string $driver): bool
+    public function driver($driver = null): Gateway
     {
-        return isset($this->customCreators[$driver])
-            || method_exists($this, 'create' . Str::studly($driver) . 'Driver');
+        return $this->gateway($driver);
+    }
+
+    public function hasGateway(string $name): bool
+    {
+        return isset($this->customCreators[$name])
+            || method_exists($this, 'create' . Str::studly($name) . 'Driver');
     }
 
     /** @return string[] */
-    public function registeredDrivers(): array
+    public function registeredGateways(): array
     {
         return array_keys($this->customCreators);
     }
 
-    public function via(?string $driver = null): PendingPayment
+    public function via(?string $gateway = null): PendingPayment
     {
         return $this->pendingPayment(
-            $driver !== null ? $this->driver($driver) : null,
+            $gateway !== null ? $this->gateway($gateway) : null,
             autoRoute: false,
         );
     }
@@ -86,7 +91,7 @@ class PaylineManager extends Manager
     }
 
     /**
-     * Driver factories receive the gateway config as their second argument.
+     * Gateway factories receive the gateway config as their second argument.
      */
     protected function callCustomCreator($driver): Gateway
     {

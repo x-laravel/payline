@@ -17,13 +17,15 @@ use XLaravel\Payline\PendingPayment;
 use XLaravel\Payline\PendingPaymentBuilder;
 
 /**
- * @method static Gateway driver(?string $driver = null)
- * @method static PendingPayment via(?string $driver = null)
+ * @method static Gateway gateway(?string $name = null)
+ * @method static bool hasGateway(string $name)
+ * @method static string[] registeredGateways()
+ * @method static PendingPayment via(?string $gateway = null)
  * @method static PendingPayment viaAuto()
  * @method static PendingPaymentBuilder for(Payable $payable)
  * @method static PaymentOperations payment(Payment $payment)
  * @method static ?string cheapestFor(CardProfile $profile, int $installments = 1)
- * @method static PaylineManager extend(string $driver, Closure $callback)
+ * @method static PaylineManager extend(string $gateway, Closure $callback)
  *
  * @see PaylineManager
  */

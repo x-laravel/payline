@@ -4,13 +4,13 @@
 - [Pages](#pages)
 - [Conventions](#conventions)
 
-Payline sits between a Laravel application and one or more payment providers. The application always talks to the same API; each provider is a separate driver package that implements small, operation specific contracts.
+Payline sits between a Laravel application and one or more payment providers. The application always talks to the same API; each provider is a separate gateway package that implements small, operation specific contracts.
 
 ## Reading Order
 
 Start with [Installation](installation.md) to get a working setup, then read [Architecture](architecture.md) to understand what Payline records and why. After that, go to whichever task you have in front of you.
 
-If you are writing a driver package rather than an application, read [Architecture](architecture.md) and then [Writing a Driver](writing-a-driver.md).
+If you are writing a gateway package rather than an application, read [Architecture](architecture.md) and then [Writing a Gateway](writing-a-gateway.md).
 
 ## Pages
 
@@ -22,7 +22,7 @@ If you are writing a driver package rather than an application, read [Architectu
 | [Follow-up Operations](follow-up-operations.md) | How-to | How do I capture, refund, void or reconcile a payment? |
 | [Callbacks and Webhooks](callbacks-and-webhooks.md) | Explanation | How does Payline receive 3DS returns and provider notifications? |
 | [Gateway Routing](gateway-routing.md) | Explanation | How is a gateway chosen when the application does not name one? |
-| [Writing a Driver](writing-a-driver.md) | How-to | How do I add support for a new provider? |
+| [Writing a Gateway](writing-a-gateway.md) | How-to | How do I add support for a new provider? |
 | [Configuration](configuration.md) | Reference | Which configuration keys exist and what do they do? |
 | [Events](events.md) | Reference | Which events are dispatched and what do they carry? |
 | [Database](database.md) | Reference | Which tables, columns and statuses exist? |

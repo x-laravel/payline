@@ -24,7 +24,7 @@ The aggregate record of a checkout attempt.
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `ulid` | Primary key |
-| `gateway` | `string(50)` | Driver name that owns the payment |
+| `gateway` | `string(50)` | Gateway name that owns the payment |
 | `initial_type` | `string(30)` | `payment` or `authorization` |
 | `status` | `string(30)` | Defaults to `initiated` |
 | `idempotency_key` | `string`, nullable | Supplied by the application |
@@ -68,7 +68,7 @@ One provider call.
 | `redirect_url` | `text`, nullable | |
 | `metadata` | `json`, nullable | |
 | `parent_transaction_id` | `ulid`, nullable | Self reference, null on delete |
-| `expires_at` | `timestamp`, nullable | Set from the driver's `expiresAt`, typically an authorization window |
+| `expires_at` | `timestamp`, nullable | Set from the gateway's `expiresAt`, typically an authorization window |
 | `completed_at` | `timestamp`, nullable | Set when the status becomes final |
 
 Indexes: `(payment_id, type, status)`. Unique on `(payment_id, type, idempotency_key)`.
@@ -100,7 +100,7 @@ Provider pricing used by commission routing.
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `ulid` | Primary key |
-| `gateway` | `string(50)` | Driver name |
+| `gateway` | `string(50)` | Gateway name |
 | `card_family` | `string(50)`, nullable | Null matches any family |
 | `card_type` | `string(30)`, nullable | Null matches any type |
 | `installments` | `unsignedTinyInteger` | Matched exactly, defaults to 1 |
@@ -148,7 +148,7 @@ There is no refund specific transaction status. A refund that went through is `s
 
 ## Transaction Types
 
-| Value | Contract | Driver method |
+| Value | Contract | Gateway method |
 |-------|----------|---------------|
 | `payment` | `ChargesPayments` | `pay` |
 | `authorization` | `AuthorizesPayments` | `authorize` |

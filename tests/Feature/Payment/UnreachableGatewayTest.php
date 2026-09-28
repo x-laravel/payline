@@ -58,7 +58,7 @@ class UnreachableGatewayTest extends TestCase
 
     public function test_any_other_failure_is_still_raised(): void
     {
-        FakeGateway::willThrow(new RuntimeException('Driver bug.'));
+        FakeGateway::willThrow(new RuntimeException('Gateway bug.'));
 
         $this->expectException(RuntimeException::class);
 

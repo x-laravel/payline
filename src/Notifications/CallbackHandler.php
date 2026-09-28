@@ -7,8 +7,8 @@ use XLaravel\Payline\Contracts\HandlesCallbacks;
 use XLaravel\Payline\DTOs\CallbackData;
 use XLaravel\Payline\DTOs\CallbackResult;
 use XLaravel\Payline\DTOs\PaymentResponse;
+use XLaravel\Payline\Dispatch\GatewayInvoker;
 use XLaravel\Payline\Events\CallbackUnmatched;
-use XLaravel\Payline\Gateway\GatewayInvoker;
 use XLaravel\Payline\Models\Transaction;
 use XLaravel\Payline\PaylineManager;
 use XLaravel\Payline\Payments\TransactionRunner;
@@ -25,7 +25,7 @@ class CallbackHandler
 
     public function handle(CallbackData $data): CallbackResult
     {
-        $gateway = $this->manager->driver($data->gateway);
+        $gateway = $this->manager->gateway($data->gateway);
 
         $response = $this->invoker->call($gateway, HandlesCallbacks::class, 'handleCallback', $data);
 

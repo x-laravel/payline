@@ -15,7 +15,7 @@ Full documentation is in [docs/](docs/README.md).
 
 - PHP 8.3 or newer
 - Laravel 12 or 13
-- A Payline gateway driver
+- A Payline gateway
 
 Amounts are integers in the currency's minor unit. For example, `10000` represents TRY 100.00.
 
@@ -36,7 +36,7 @@ php artisan vendor:publish --tag=payline-config
 ```
 
 ```env
-PAYLINE_DRIVER=iyzico
+PAYLINE_GATEWAY=iyzico
 ```
 
 Verify the installation:
@@ -134,7 +134,7 @@ $response = $order->pay('iyzico')->charge(
 );
 ```
 
-`Payline::driver('iyzico')` returns the raw gateway. Raw calls bypass Payline's persistence, validation, idempotency, and events, so application code should normally use `via()`, `for()`, or `pay()`.
+`Payline::gateway('iyzico')` returns the raw gateway. Raw calls bypass Payline's persistence, validation, idempotency, and events, so application code should normally use `via()`, `for()`, or `pay()`.
 
 ## Handling responses
 
@@ -293,11 +293,11 @@ If a payment request has no callback URL, Payline adds its callback route automa
 
 Webhooks are verified before storage or processing. Provider event IDs are deduplicated per gateway; when no event ID is available, Payline uses a fingerprint of the raw request body. Sensitive payload keys are redacted before persistence and event dispatch.
 
-Drivers that sign the raw request must implement `HandlesRawWebhooks`. Providers that sign a normalized array payload implement `HandlesWebhooks` instead. A driver implementing neither cannot receive webhooks. The webhook route is CSRF-exempt and uses `throttle:60,1` by default.
+Gateways that sign the raw request must implement `HandlesRawWebhooks`. Providers that sign a normalized array payload implement `HandlesWebhooks` instead. A gateway implementing neither cannot receive webhooks. The webhook route is CSRF-exempt and uses `throttle:60,1` by default.
 
 ## Reconciliation
 
-Provider timeouts and ambiguous errors are recorded as `unknown` instead of being treated as declined payments. A provider Payline could not reach returns an `Unknown` response rather than throwing, so the caller reads a status; every other exception is still rethrown. Drivers implementing `QueriesPayments` can reconcile pending and unknown records:
+Provider timeouts and ambiguous errors are recorded as `unknown` instead of being treated as declined payments. A provider Payline could not reach returns an `Unknown` response rather than throwing, so the caller reads a status; every other exception is still rethrown. Gateways implementing `QueriesPayments` can reconcile pending and unknown records:
 
 ```php
 $response = Payline::payment($payment)->reconcile();
@@ -308,7 +308,7 @@ php artisan payline:reconcile
 php artisan payline:reconcile --gateway=iyzico --limit=50
 ```
 
-An abandoned 3D Secure page looks the same to a provider as one the customer is still reading, so a driver reports both as `Pending`. Payline records the answer as `expired` once the transaction is past the deadline the driver set, or past `payline.transactions.pending_ttl` when it set none. A provider that later reports the payment as settled still overrides that verdict.
+An abandoned 3D Secure page looks the same to a provider as one the customer is still reading, so a gateway reports both as `Pending`. Payline records the answer as `expired` once the transaction is past the deadline the gateway set, or past `payline.transactions.pending_ttl` when it set none. A provider that later reports the payment as settled still overrides that verdict.
 
 Providers describe the order rather than one operation on it, so reconciliation queries the sale or the authorization and settles any open refund or void from the same answer, through `PaymentResponse::$refundedAmount` and `PaymentResponse::$voided`. This is what releases a payment that an unanswered refund left `unknown`.
 
@@ -350,9 +350,9 @@ Lifecycle events are dispatched only when the recorded status changes:
 - `WebhookReceived`
 - `CallbackUnmatched`
 
-## Writing a gateway driver
+## Writing a gateway
 
-Every driver implements `Gateway` and only the operation contracts it supports:
+Every gateway implements `Gateway` and only the operation contracts it supports:
 
 ```php
 use XLaravel\Payline\Contracts\ChargesPayments;
@@ -404,9 +404,9 @@ Available operation contracts:
 - `QueriesPayments`
 - `ProvidesGatewayCapabilities`
 
-Payline dispatches every operation through these contracts. A driver that defines a matching method without implementing the contract is rejected with a `LogicException`.
+Payline dispatches every operation through these contracts. A gateway that defines a matching method without implementing the contract is rejected with a `LogicException`.
 
-Register the driver from its service provider:
+Register the gateway from its service provider:
 
 ```php
 public function boot(): void
@@ -418,7 +418,7 @@ public function boot(): void
 }
 ```
 
-The driver receives `config('payline.gateways.my-gateway')` as its configuration array.
+The gateway receives `config('payline.gateways.my-gateway')` as its configuration array.
 
 ## Configuration and security
 
@@ -426,7 +426,7 @@ Important `config/payline.php` options:
 
 ```php
 return [
-    'default' => env('PAYLINE_DRIVER'),
+    'default' => env('PAYLINE_GATEWAY'),
 
     'currency' => env('PAYLINE_CURRENCY', 'TRY'),
 
@@ -487,7 +487,7 @@ composer test
 | [Follow-up Operations](docs/follow-up-operations.md) | How do I capture, refund, void or reconcile? |
 | [Callbacks and Webhooks](docs/callbacks-and-webhooks.md) | How are 3DS returns and provider notifications handled? |
 | [Gateway Routing](docs/gateway-routing.md) | How is a gateway chosen automatically? |
-| [Writing a Driver](docs/writing-a-driver.md) | How do I support a new provider? |
+| [Writing a Gateway](docs/writing-a-gateway.md) | How do I support a new provider? |
 | [Configuration](docs/configuration.md) | Which configuration keys exist? |
 | [Events](docs/events.md) | Which events are dispatched? |
 | [Database](docs/database.md) | Which tables, columns and statuses exist? |

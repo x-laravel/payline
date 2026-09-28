@@ -33,17 +33,17 @@ A refund transaction reports `successful` for its own amount. Whether the paymen
 
 `PendingPayment` is what the application holds after `Payline::via()`, `Payline::for()` or `$model->pay()`. It collects the request fields through fluent methods and builds the `PaymentRequest` when a terminal method is called. `PaymentOperations` is its counterpart for an existing payment, covering capture, refund, void and reconcile.
 
-Both delegate the same sequence. `GatewayResolver` picks the driver and verifies that it supports the operation. `TransactionRecorder` opens a database transaction, resolves idempotency, applies the amount ceiling and writes the row. `GatewayInvoker` checks the capability contract and calls the provider method. `TransactionRunner` catches what comes back, hands it to `TransactionUpdater`, and dispatches the lifecycle event only when the recorded status actually changed.
+Both delegate the same sequence. `GatewayResolver` picks the gateway and verifies that it supports the operation. `TransactionRecorder` opens a database transaction, resolves idempotency, applies the amount ceiling and writes the row. `GatewayInvoker` checks the capability contract and calls the provider method. `TransactionRunner` catches what comes back, hands it to `TransactionUpdater`, and dispatches the lifecycle event only when the recorded status actually changed.
 
 `TransactionRunner` treats an exception and an unrecognisable response the same way: the transaction is marked `unknown` rather than failed and a `PaymentErrored` event is dispatched. A timeout is not a decline, and recording it as one would let the application ship goods it was never paid for, or refuse money it already took.
 
-What happens next depends on whose fault it was. A `ConnectionException`, which is Laravel's HTTP client saying it could not reach the provider or gave up waiting, is returned as an `Unknown` response, so the caller reads a status rather than handling an exception for the most common cause of an unknown transaction. Every other exception is rethrown, because it is the driver's own fault rather than the provider's silence, and hiding it would hide a bug.
+What happens next depends on whose fault it was. A `ConnectionException`, which is Laravel's HTTP client saying it could not reach the provider or gave up waiting, is returned as an `Unknown` response, so the caller reads a status rather than handling an exception for the most common cause of an unknown transaction. Every other exception is rethrown, because it is the gateway's own fault rather than the provider's silence, and hiding it would hide a bug.
 
 ## The Incoming Path
 
 A provider reports the result of a 3D Secure flow by redirecting the customer back, and reports later state changes over a webhook. Both arrive at `CallbackHandler`.
 
-For a browser return, `CallbackController` builds a `CallbackData` from the request and calls `CallbackHandler::handle()`, which asks the driver to interpret it. For a webhook, `IncomingNotificationProcessor` verifies the signature, deduplicates the event against `payline_webhook_logs`, and hands the parsed response to `CallbackHandler::apply()`.
+For a browser return, `CallbackController` builds a `CallbackData` from the request and calls `CallbackHandler::handle()`, which asks the gateway to interpret it. For a webhook, `IncomingNotificationProcessor` verifies the signature, deduplicates the event against `payline_webhook_logs`, and hands the parsed response to `CallbackHandler::apply()`.
 
 Matching an incoming response to a stored transaction is by provider order id first and provider transaction id second, always scoped to the gateway and the operation type. When nothing matches, a `CallbackUnmatched` event is dispatched and no row is touched.
 
@@ -59,7 +59,7 @@ For a refund it locks the payment as well and applies a second ceiling against t
 
 `Gateway` carries only `getName()`. Every operation lives in its own interface: `ChargesPayments`, `AuthorizesPayments`, `CapturesPayments`, `RefundsPayments`, `VoidsPayments`, `QueriesPayments`, `HandlesCallbacks`, `HandlesWebhooks`, `HandlesRawWebhooks`.
 
-`TransactionType` maps each operation to its contract and method name, and `GatewayInvoker` refuses to call a driver that does not implement the contract. A driver therefore declares what it supports by implementing interfaces, and routing can ask the same question without calling the provider. See [decision 0001](decisions/0001-capability-contracts-are-mandatory.md).
+`TransactionType` maps each operation to its contract and method name, and `GatewayInvoker` refuses to call a gateway that does not implement the contract. A gateway therefore declares what it supports by implementing interfaces, and routing can ask the same question without calling the provider. See [decision 0001](decisions/0001-capability-contracts-are-mandatory.md).
 
 `ProvidesGatewayCapabilities` is optional and narrower: it filters on currency, installment count, payment method and 3D Secure support.
 
@@ -70,8 +70,8 @@ For a refund it locks the payment as well and applies a second ceiling against t
 | `PendingPayment` | Collects request fields, starts a charge or authorization |
 | `Concerns\BuildsPaymentRequest` | The fluent setters and the `PaymentRequest` composition |
 | `PaymentOperations` | Capture, refund, void and reconcile on a recorded payment |
-| `Gateway\GatewayResolver` | Driver selection and support checks |
-| `Gateway\GatewayInvoker` | Contract check and the provider call |
+| `Dispatch\GatewayResolver` | Gateway selection and support checks |
+| `Dispatch\GatewayInvoker` | Contract check and the provider call |
 | `Routing\GatewayRouter` | Commission ranking from `payline_commission_rates` |
 | `Routing\GatewayPolicyPipeline` | Application supplied routing policies |
 | `TransactionRecorder` | Row creation, idempotency and lookups |
