@@ -64,7 +64,7 @@ class PaymentOperations
 
     public function void(?string $idempotencyKey = null, ?array $metadata = null): PaymentResponse
     {
-        $parent = $this->authorizedParent();
+        $parent = $this->voidableParent();
 
         return $this->perform(TransactionType::Void, new VoidData(
             gatewayTransactionId: $this->providerTransactionId($parent),
@@ -142,6 +142,21 @@ class PaymentOperations
             ->latest('created_at')
             ->first()
             ?? throw new LogicException('Payment has no authorized authorization transaction.');
+    }
+
+    private function voidableParent(): Transaction
+    {
+        return $this->payment->transactions()
+            ->where('type', TransactionType::Authorization->value)
+            ->where('status', TransactionStatus::Authorized->value)
+            ->latest('created_at')
+            ->first()
+            ?? $this->payment->transactions()
+                ->where('type', TransactionType::Payment->value)
+                ->where('status', TransactionStatus::Successful->value)
+                ->latest('created_at')
+                ->first()
+            ?? throw new LogicException('Payment has no authorization or sale to void.');
     }
 
     private function refundableParent(): Transaction

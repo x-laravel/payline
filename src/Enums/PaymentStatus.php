@@ -68,6 +68,7 @@ enum PaymentStatus: string
             self::Paid => in_array($to, [
                 self::PartiallyRefunded,
                 self::Refunded,
+                self::Voided,
                 self::Unknown,
             ], true),
             self::PartiallyRefunded => in_array($to, [

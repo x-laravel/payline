@@ -21,7 +21,7 @@ $operations = Payline::payment($payment);
 
 Payline uses the gateway that owns the payment. Passing a different driver throws a `LogicException`, because a provider cannot settle a transaction it never created.
 
-Each operation finds its own parent transaction. Capture and void look for the latest `authorized` authorization; refund looks for the latest `successful` payment or capture. When none exists, the call throws a `LogicException` before anything is recorded.
+Each operation finds its own parent transaction. Capture looks for the latest `authorized` authorization; void looks for the same, then for the latest `successful` payment; refund looks for the latest `successful` payment or capture. When none exists, the call throws a `LogicException` before anything is recorded.
 
 ## Capture
 
@@ -68,7 +68,7 @@ Two ceilings apply. The refund cannot exceed the parent transaction, which is wh
 
 ## Void
 
-Voiding releases an authorization that was never captured:
+Voiding releases an authorization that was never captured, or cancels a sale before the provider settles it:
 
 ```php
 $void = Payline::payment($payment)->void(
@@ -76,7 +76,9 @@ $void = Payline::payment($payment)->void(
 );
 ```
 
-The void transaction records the full authorized amount and the payment becomes `voided`, which is a final state.
+The void transaction records the full amount of its parent and the payment becomes `voided`, which is a final state.
+
+A sale can be voided while it is `successful` and has no refund in flight or completed; a failed or expired refund does not count. Whether the provider still accepts the void, typically only before its end of day settlement, is for the provider to answer.
 
 A payment that has been captured, fully or partly, cannot be voided. Use a refund to return money that was already collected.
 
@@ -101,7 +103,7 @@ The command processes the least recently updated payments first, defaults to 100
 
 ## Reading the Amounts
 
-The money a payment actually collected is the sum of its successful payment and capture transactions:
+The money a payment actually collected is the sum of its successful payment and capture transactions, and nothing at all once the payment itself stops counting as successful, such as after a void:
 
 ```php
 $payment->capturedAmount();
@@ -123,13 +125,14 @@ $order->amountNet();
 
 | Exception | Message | Cause |
 |-----------|---------|-------|
-| `LogicException` | Payment has no authorized authorization transaction. | Capture or void on a payment that was charged rather than authorized |
+| `LogicException` | Payment has no authorized authorization transaction. | Capture on a payment that was charged rather than authorized |
+| `LogicException` | Payment has no authorization or sale to void. | Void on a payment that never succeeded |
 | `LogicException` | Payment has no successful transaction to refund. | Refund before any money was collected |
 | `LogicException` | Follow-up operations must use the payment gateway [x], [y] given. | A driver other than the one that owns the payment |
 | `LogicException` | Gateway [x] does not implement [y]. | The driver does not support the operation |
 | `InvalidPaymentOperationException` | Only an authorized or partially captured payment can be captured. | The payment is already settled |
 | `InvalidPaymentOperationException` | Only a paid payment can be refunded. | The payment holds no outstanding amount |
-| `InvalidPaymentOperationException` | Only an authorized payment can be voided. | Money was already captured |
+| `InvalidPaymentOperationException` | Only an authorized payment or an unrefunded sale can be voided. | Money was captured, or part of a sale was refunded |
 | `InvalidPaymentOperationException` | Capture amount exceeds the unreserved authorized amount. | Captures would exceed the authorization |
 | `InvalidPaymentOperationException` | Refund amount exceeds the unreserved amount of the parent transaction. | Refunds would exceed the parent capture or payment |
 | `InvalidPaymentOperationException` | Parent transaction does not belong to the payment. | The parent belongs to another payment |

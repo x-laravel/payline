@@ -38,13 +38,14 @@ class StatusTransitionTest extends TestCase
         $this->assertTrue(TransactionStatus::Unknown->canTransitionTo(TransactionStatus::Failed));
     }
 
-    public function test_a_paid_payment_can_only_move_towards_refunds(): void
+    public function test_a_paid_payment_can_only_move_towards_refunds_or_a_void(): void
     {
         $this->assertTrue(PaymentStatus::Paid->canTransitionTo(PaymentStatus::PartiallyRefunded));
         $this->assertTrue(PaymentStatus::Paid->canTransitionTo(PaymentStatus::Refunded));
+        $this->assertTrue(PaymentStatus::Paid->canTransitionTo(PaymentStatus::Voided));
 
         $this->assertFalse(PaymentStatus::Paid->canTransitionTo(PaymentStatus::Failed));
-        $this->assertFalse(PaymentStatus::Paid->canTransitionTo(PaymentStatus::Voided));
+        $this->assertFalse(PaymentStatus::PartiallyRefunded->canTransitionTo(PaymentStatus::Voided));
     }
 
     public function test_a_partially_refunded_payment_can_complete_its_refund(): void

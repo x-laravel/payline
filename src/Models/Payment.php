@@ -119,6 +119,10 @@ class Payment extends Model
 
     public function capturedAmount(): int
     {
+        if (! in_array($this->status, PaymentStatus::successful(), true)) {
+            return 0;
+        }
+
         return (int) $this->transactions()
             ->whereIn('type', [TransactionType::Payment->value, TransactionType::Capture->value])
             ->where('status', TransactionStatus::Successful->value)

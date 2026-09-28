@@ -73,11 +73,26 @@ class PaymentOperationValidator
         $this->assertParent($payment, $parent);
         $this->assertGatewayTransaction($data->gatewayTransactionId, $parent);
 
-        if ($payment->status !== PaymentStatus::Authorized
-            || $parent->type !== TransactionType::Authorization
-            || $parent->status !== TransactionStatus::Authorized) {
-            throw new InvalidPaymentOperationException('Only an authorized payment can be voided.');
+        if (! $this->isVoidableAuthorization($payment, $parent) && ! $this->isVoidableSale($payment, $parent)) {
+            throw new InvalidPaymentOperationException('Only an authorized payment or an unrefunded sale can be voided.');
         }
+    }
+
+    private function isVoidableAuthorization(Payment $payment, Transaction $parent): bool
+    {
+        return $payment->status === PaymentStatus::Authorized
+            && $parent->type === TransactionType::Authorization
+            && $parent->status === TransactionStatus::Authorized;
+    }
+
+    private function isVoidableSale(Payment $payment, Transaction $parent): bool
+    {
+        return $payment->status === PaymentStatus::Paid
+            && $parent->type === TransactionType::Payment
+            && $parent->status === TransactionStatus::Successful
+            && ! $payment->refunds()
+                ->whereNotIn('status', [TransactionStatus::Failed->value, TransactionStatus::Expired->value])
+                ->exists();
     }
 
     private function assertParent(Payment $payment, Transaction $parent): void
