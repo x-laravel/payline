@@ -4,7 +4,7 @@
 - [Registered Routes](#registered-routes)
 - [The Callback Path](#the-callback-path)
 - [Redirect Destinations](#redirect-destinations)
-- [Leaving the Frame](#leaving-the-frame)
+- [Answering the Browser](#answering-the-browser)
 - [The Webhook Path](#the-webhook-path)
 - [Deduplication](#deduplication)
 - [Payload Storage and Redaction](#payload-storage-and-redaction)
@@ -36,7 +36,7 @@ When a payment request carries no callback URL, Payline fills in its own callbac
 
 `CallbackController` builds a `CallbackData` from the query string, the post body, the headers and the raw body, and passes it to `CallbackHandler::handle()`. The handler asks the driver to interpret it through `HandlesCallbacks`, matches the result to a stored transaction, applies it, and returns a `CallbackResult` holding the response and the transaction.
 
-The controller then redirects and flashes three keys to the session:
+The controller then answers the browser as described in [Answering the Browser](#answering-the-browser). In the `breakout` and `redirect` modes it flashes three keys to the session:
 
 | Key | Value |
 |-----|-------|
@@ -72,15 +72,32 @@ $this->app->bind(CallbackRedirectResolver::class, OrderCallbackRedirects::class)
 
 The resolver receives the gateway name and the `CallbackResult`, so it can read the matched transaction and its payment.
 
-## Leaving the Frame
+## Answering the Browser
 
-Providers commonly render their 3D Secure step inside an iframe on the checkout page, and the return lands in that same frame. A redirect answered there navigates the frame, so the customer keeps looking at the checkout page with the result hidden inside it.
+Providers commonly render their 3D Secure step inside an iframe on the checkout page, and the return lands in that same frame. `payline.routes.callback_response` decides what the callback sends back:
 
-Payline therefore answers the callback with a small page that moves the top window to the destination. When the callback was not framed the top window is the only window, so the same page behaves exactly like a redirect. A `<noscript>` link covers a browser with scripting off.
+| Mode | Response |
+|------|----------|
+| `breakout` | A small page that moves the top window to the destination. Default |
+| `redirect` | A plain redirect to the destination, which navigates only the frame |
+| `view` | A view rendered in place, with no redirect |
 
-Set `payline.routes.callback_breakout` to `false` to answer with a plain redirect instead.
+In `breakout` mode an unframed callback has no other window, so the page behaves exactly like a redirect. A `<noscript>` link covers a browser with scripting off.
 
-The status, payment id and transaction id are flashed to the session either way. Treat them as a convenience: the callback is a cross site POST, so a browser that withholds the session cookie on it leaves the flash unreachable. Anything that must happen belongs in a listener for the lifecycle events, which fire on the recorded status change regardless of the browser.
+`view` mode suits a checkout page that keeps its iframe open and waits for the result. No destination is resolved. The view named in `payline.routes.callback_views.success` or `payline.routes.callback_views.failure` is rendered with these variables:
+
+| Variable | Value |
+|----------|-------|
+| `$approved` | Whether the response is approved |
+| `$status` | The transaction status as a string |
+| `$message` | The provider's error message, or `null` |
+| `$result` | The `CallbackResult` |
+
+The shipped `payline::callback` view posts `{type: 'payline', status, approved, message}` to the parent window when it is framed.
+
+Both views are checked before the callback is applied, so a name that does not resolve fails the request without recording the payment.
+
+In the redirecting modes the status, payment id and transaction id are flashed to the session. Treat them as a convenience: the callback is a cross site POST, so a browser that withholds the session cookie on it leaves the flash unreachable. Anything that must happen belongs in a listener for the lifecycle events, which fire on the recorded status change regardless of the browser.
 
 ## The Webhook Path
 

@@ -4,9 +4,12 @@ namespace XLaravel\Payline\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\View;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 use XLaravel\Payline\Contracts\CallbackRedirectResolver;
 use XLaravel\Payline\DTOs\CallbackData;
+use XLaravel\Payline\DTOs\CallbackResult;
 use XLaravel\Payline\Notifications\CallbackHandler;
 
 class CallbackController extends Controller
@@ -17,6 +20,16 @@ class CallbackController extends Controller
         CallbackHandler $callbacks,
         CallbackRedirectResolver $redirects,
     ): Response {
+        $mode = config('payline.routes.callback_response', 'breakout');
+
+        if (! in_array($mode, ['breakout', 'redirect', 'view'], true)) {
+            throw new InvalidArgumentException("Unsupported payline.routes.callback_response [{$mode}].");
+        }
+
+        if ($mode === 'view') {
+            $this->assertViewsExist();
+        }
+
         $data = new CallbackData(
             gateway: $gateway,
             requestData: array_merge($request->query(), $request->post()),
@@ -26,6 +39,10 @@ class CallbackController extends Controller
 
         $result = $callbacks->handle($data);
 
+        if ($mode === 'view') {
+            return $this->view($result);
+        }
+
         $flash = [
             'payline_status' => $result->response->status->value,
             'payline_payment_id' => $result->transaction?->payment_id,
@@ -34,7 +51,7 @@ class CallbackController extends Controller
 
         $destination = $redirects->resolve($gateway, $result);
 
-        if (! config('payline.routes.callback_breakout', true)) {
+        if ($mode === 'redirect') {
             return redirect($destination)->with($flash);
         }
 
@@ -44,6 +61,37 @@ class CallbackController extends Controller
 
         return response($this->breakoutPage($destination))
             ->header('Content-Type', 'text/html; charset=UTF-8');
+    }
+
+    private function assertViewsExist(): void
+    {
+        foreach (['success', 'failure'] as $outcome) {
+            $view = $this->viewFor($outcome);
+
+            if (! View::exists($view)) {
+                throw new InvalidArgumentException(
+                    "View [{$view}] configured for payline.routes.callback_views.{$outcome} does not exist.",
+                );
+            }
+        }
+    }
+
+    private function viewFor(string $outcome): string
+    {
+        return config("payline.routes.callback_views.{$outcome}", 'payline::callback');
+    }
+
+    private function view(CallbackResult $result): Response
+    {
+        $approved = $result->response->isApproved();
+        $outcome = $approved ? 'success' : 'failure';
+
+        return response()->view($this->viewFor($outcome), [
+            'result' => $result,
+            'approved' => $approved,
+            'status' => $result->response->status->value,
+            'message' => $result->response->errorMessage,
+        ]);
     }
 
     private function breakoutPage(string $destination): string

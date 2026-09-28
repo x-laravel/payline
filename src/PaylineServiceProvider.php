@@ -2,6 +2,7 @@
 
 namespace XLaravel\Payline;
 
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\ServiceProvider;
 use XLaravel\Payline\Console\PaylineDoctorCommand;
@@ -32,6 +33,8 @@ class PaylineServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->loadViewsFrom(__DIR__ . '/../resources/views', 'payline');
+
         if ($this->app->runningInConsole()) {
             $this->registerPublishables();
             $this->commands([
@@ -75,6 +78,10 @@ class PaylineServiceProvider extends ServiceProvider
             __DIR__ . '/../config/payline.php' => config_path('payline.php'),
         ], 'payline-config');
 
+        $this->publishes([
+            __DIR__ . '/../resources/views' => resource_path('views/vendor/payline'),
+        ], 'payline-views');
+
         $this->publishesMigrations([
             __DIR__ . '/../database/migrations' => database_path('migrations'),
         ], 'payline-migrations');
@@ -94,12 +101,12 @@ class PaylineServiceProvider extends ServiceProvider
 
         $router->match(['GET', 'POST'], "{$prefix}/callback/{gateway}", CallbackController::class)
             ->middleware($middleware)
-            ->withoutMiddleware(['csrf', VerifyCsrfToken::class])
+            ->withoutMiddleware(['csrf', PreventRequestForgery::class, VerifyCsrfToken::class])
             ->name('payline.callback');
 
         $router->post("{$prefix}/webhooks/{gateway}", WebhookController::class)
             ->middleware(array_merge($middleware, $webhookMiddleware))
-            ->withoutMiddleware(['web', 'csrf', VerifyCsrfToken::class])
+            ->withoutMiddleware(['web', 'csrf', PreventRequestForgery::class, VerifyCsrfToken::class])
             ->name('payline.webhook');
     }
 }

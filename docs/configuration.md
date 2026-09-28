@@ -44,9 +44,13 @@ Each entry under `gateways` is passed to the driver factory as its configuration
 | `routes.prefix` | `string` | `payline` | URI prefix for both routes |
 | `routes.middleware` | `array` | `['web']` | Middleware for both routes |
 | `routes.webhook_middleware` | `array` | `['throttle:60,1']` | Additional middleware for the webhook route |
-| `routes.callback_breakout` | `bool` | `true` | Sends the customer to the destination in the top window instead of answering with a redirect |
+| `routes.callback_response` | `string` | `breakout` | How the callback answers the browser: `breakout`, `redirect` or `view` |
+| `routes.callback_views.success` | `string` | `payline::callback` | View rendered after an approved callback in `view` mode |
+| `routes.callback_views.failure` | `string` | `payline::callback` | View rendered after any other callback in `view` mode |
 
 CSRF verification is removed from both routes. The `web` group is removed from the webhook route.
+
+The shipped view can be published with `php artisan vendor:publish --tag=payline-views`.
 
 ## Callback URLs
 

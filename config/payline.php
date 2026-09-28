@@ -24,7 +24,11 @@ return [
         'prefix' => 'payline',
         'middleware' => ['web'],
         'webhook_middleware' => ['throttle:60,1'],
-        'callback_breakout' => true,
+        'callback_response' => 'breakout',
+        'callback_views' => [
+            'success' => 'payline::callback',
+            'failure' => 'payline::callback',
+        ],
     ],
 
     'bin_lookup' => [
