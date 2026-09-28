@@ -11,6 +11,7 @@ use XLaravel\Payline\DTOs\CardProfile;
 use XLaravel\Payline\Gateway\GatewayInvoker;
 use XLaravel\Payline\Gateway\GatewayResolver;
 use XLaravel\Payline\Models\Payment;
+use XLaravel\Payline\Payments\FollowUpReconciler;
 use XLaravel\Payline\Payments\TransactionRunner;
 use XLaravel\Payline\Routing\GatewayRouter;
 
@@ -75,6 +76,7 @@ class PaylineManager extends Manager
             resolver: $this->container->make(GatewayResolver::class),
             invoker: $this->container->make(GatewayInvoker::class),
             runner: $this->container->make(TransactionRunner::class),
+            followUps: $this->container->make(FollowUpReconciler::class),
         );
     }
 

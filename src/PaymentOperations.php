@@ -15,6 +15,7 @@ use XLaravel\Payline\Gateway\GatewayInvoker;
 use XLaravel\Payline\Gateway\GatewayResolver;
 use XLaravel\Payline\Models\Payment;
 use XLaravel\Payline\Models\Transaction;
+use XLaravel\Payline\Payments\FollowUpReconciler;
 use XLaravel\Payline\Payments\TransactionRunner;
 
 class PaymentOperations
@@ -26,6 +27,7 @@ class PaymentOperations
         private readonly GatewayResolver $resolver,
         private readonly GatewayInvoker $invoker,
         private readonly TransactionRunner $runner,
+        private readonly FollowUpReconciler $followUps,
     ) {}
 
     public function capture(
@@ -85,8 +87,7 @@ class PaymentOperations
             ));
         }
 
-        $transaction = $this->payment->latestTransaction()->first()
-            ?? throw new LogicException('Payment has no transaction to reconcile.');
+        $transaction = $this->queryableTransaction();
 
         $query ??= new PaymentQuery(
             gatewayTransactionId: $transaction->gateway_transaction_id,
@@ -99,7 +100,19 @@ class PaymentOperations
         $this->runner->assertMatches($this->payment, $transaction, $response);
         $this->runner->apply($transaction, $response);
 
+        $this->followUps->settle($this->payment->refresh(), $response);
+
         return $response;
+    }
+
+    private function queryableTransaction(): Transaction
+    {
+        return $this->payment->transactions()
+            ->whereIn('type', [TransactionType::Payment->value, TransactionType::Authorization->value])
+            ->latest('created_at')
+            ->first()
+            ?? $this->payment->latestTransaction()->first()
+            ?? throw new LogicException('Payment has no transaction to reconcile.');
     }
 
     private function perform(

@@ -90,7 +90,11 @@ A provider call that timed out leaves the transaction `unknown`, which means Pay
 $response = Payline::payment($payment)->reconcile();
 ```
 
-The driver must implement `QueriesPayments`. Payline builds a `PaymentQuery` from the latest transaction and the payment reference, applies the answer through the same state machine as any other response, and leaves the row untouched when the answer contradicts a settled status.
+The driver must implement `QueriesPayments`. Providers answer a status query about the order, not about one operation on it, so Payline asks about the sale or the authorization and applies the answer to that transaction through the same state machine as any other response.
+
+A refund or a void whose own call was never answered stays open. Payline settles those from the same order snapshot: `PaymentResponse::$refundedAmount` and `PaymentResponse::$voided` say how much the provider has returned and whether the order was cancelled, and each open follow-up is recorded as successful when the order accounts for it and failed when it does not. Without those two fields the follow-up is left open, which is what happens when the provider cannot find the order at all.
+
+This is what keeps a payment from locking up: an unanswered refund makes the payment `unknown`, and a payment that is `unknown` accepts no further refund or void until reconciliation resolves it.
 
 Run it in bulk for payments that are `pending` or `unknown`:
 

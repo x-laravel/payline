@@ -40,10 +40,13 @@ enum TransactionStatus: string
                 self::Voided,
                 self::Unknown,
             ], true),
+            self::Expired => in_array($to, [
+                self::Authorized,
+                self::Successful,
+            ], true),
             self::Authorized,
             self::Successful,
             self::Failed,
-            self::Expired,
             self::Voided => false,
         };
     }

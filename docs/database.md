@@ -142,7 +142,7 @@ Final statuses are `successful`, `refunded`, `voided`, `failed` and `expired`. A
 | `expired` | Lapsed |
 | `unknown` | Outcome not determinable |
 
-`authorized`, `successful`, `failed`, `voided` and `expired` are final and cannot change again. `initiated` and `unknown` can move anywhere; `pending` can settle into any of the others.
+`authorized`, `successful`, `failed` and `voided` are final and cannot change again. `initiated` and `unknown` can move anywhere; `pending` can settle into any of the others. `expired` is Payline's own verdict that a deadline passed rather than the provider's, so it still yields to a provider that later reports `authorized` or `successful`.
 
 There is no refund specific transaction status. A refund that went through is `successful` for its own amount.
 

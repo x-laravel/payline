@@ -298,7 +298,9 @@ php artisan payline:reconcile
 php artisan payline:reconcile --gateway=iyzico --limit=50
 ```
 
-An abandoned 3D Secure page looks the same to a provider as one the customer is still reading, so a driver reports both as `Pending`. Payline records the answer as `expired` once the transaction is past the deadline the driver set, or past `payline.transactions.pending_ttl` when it set none.
+An abandoned 3D Secure page looks the same to a provider as one the customer is still reading, so a driver reports both as `Pending`. Payline records the answer as `expired` once the transaction is past the deadline the driver set, or past `payline.transactions.pending_ttl` when it set none. A provider that later reports the payment as settled still overrides that verdict.
+
+Providers describe the order rather than one operation on it, so reconciliation queries the sale or the authorization and settles any open refund or void from the same answer, through `PaymentResponse::$refundedAmount` and `PaymentResponse::$voided`. This is what releases a payment that an unanswered refund left `unknown`.
 
 ## Models and events
 

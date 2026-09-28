@@ -27,6 +27,8 @@ readonly class PaymentResponse
         public ?string $eventType = null,
         public ?string $gatewayEventId = null,
         public ?DateTimeInterface $expiresAt = null,
+        public ?int $refundedAmount = null,
+        public ?bool $voided = null,
     ) {}
 
     public function isSuccessful(): bool

@@ -82,26 +82,32 @@ class TransactionRunner
 
     private function dispatchStatusEvent(PaymentResponse $response, Payment $payment, Transaction $transaction): void
     {
-        if ($response->isFailure()) {
+        $status = $transaction->status;
+
+        if (in_array($status, [TransactionStatus::Failed, TransactionStatus::Expired], true)) {
             event(new PaymentFailed($payment, $transaction, $response));
 
             return;
         }
 
-        match ($response->type) {
-            TransactionType::Payment => match (true) {
-                $response->isSuccessful() => event(new PaymentSucceeded($payment, $transaction, $response)),
-                $response->isPending() => event(new PaymentPending($payment, $transaction, $response)),
+        match ($transaction->type) {
+            TransactionType::Payment => match ($status) {
+                TransactionStatus::Successful => event(new PaymentSucceeded($payment, $transaction, $response)),
+                TransactionStatus::Pending => event(new PaymentPending($payment, $transaction, $response)),
                 default => null,
             },
-            TransactionType::Authorization => $response->status === TransactionStatus::Authorized
+            TransactionType::Authorization => $status === TransactionStatus::Authorized
                 ? event(new PaymentAuthorized($payment, $transaction, $response))
                 : null,
-            TransactionType::Capture => $response->isSuccessful()
+            TransactionType::Capture => $status === TransactionStatus::Successful
                 ? event(new PaymentCaptured($payment, $transaction, $response))
                 : null,
-            TransactionType::Refund => event(new PaymentRefunded($payment, $transaction, $response)),
-            TransactionType::Void => event(new PaymentVoided($payment, $transaction, $response)),
+            TransactionType::Refund => $status === TransactionStatus::Successful
+                ? event(new PaymentRefunded($payment, $transaction, $response))
+                : null,
+            TransactionType::Void => $status === TransactionStatus::Voided
+                ? event(new PaymentVoided($payment, $transaction, $response))
+                : null,
         };
     }
 }

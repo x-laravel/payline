@@ -201,6 +201,21 @@ Never return `true` from a verification method that does not verify. A driver wi
 
 `queryPayment()` receives whichever of the provider transaction id, provider order id and merchant reference are known, and returns the current state of that payment. Return the operation type the payment started with, and `Unknown` when the provider itself cannot say.
 
+Payline asks about the sale or the authorization, never about a refund or a void, because providers describe the order rather than one operation on it. Report what has happened to the order since so Payline can settle those follow-ups:
+
+```php
+return new PaymentResponse(
+    status: $status,
+    type: $type,
+    gatewayName: $this->getName(),
+    gatewayTransactionId: $orderId,
+    refundedAmount: $found ? (int) round((float) $result['refunded'] * 100) : null,
+    voided: $found ? $result['cancelled'] : null,
+);
+```
+
+`refundedAmount` is the returned total in minor units. Leave both fields `null` whenever the answer does not describe a real order, such as one the provider cannot find: `null` means no claim, while `0` and `false` claim that nothing was returned and nothing was cancelled, which fails an open refund or void.
+
 ## Publishing Commission Rates
 
 Implement `ProvidesCommissionRates` when the provider states what it charges. Return one `CommissionRateData` per card family and installment count, and throw when the provider refuses:
