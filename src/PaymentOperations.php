@@ -70,6 +70,7 @@ class PaymentOperations
 
         return $this->perform(TransactionType::Void, new VoidData(
             gatewayTransactionId: $this->providerTransactionId($parent),
+            currency: $parent->currency,
             metadata: $metadata,
             idempotencyKey: $idempotencyKey,
         ), $parent);
@@ -93,6 +94,7 @@ class PaymentOperations
             gatewayTransactionId: $transaction->gateway_transaction_id,
             gatewayOrderId: $transaction->gateway_order_id,
             reference: $this->payment->reference,
+            currency: $transaction->currency,
         );
 
         $response = $gateway->queryPayment($query);

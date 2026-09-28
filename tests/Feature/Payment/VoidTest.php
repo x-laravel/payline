@@ -31,6 +31,31 @@ class VoidTest extends TestCase
         ]);
     }
 
+    public function test_void_carries_the_currency_of_the_sale(): void
+    {
+        FakeGateway::willReturn(new PaymentResponse(
+            status: TransactionStatus::Successful,
+            type: TransactionType::Payment,
+            gatewayName: 'fake',
+            gatewayTransactionId: 'fake-sale-1',
+            currency: 'USD',
+        ));
+
+        Payline::via('fake')->reference('ORD-USD')->amount(10000)->currency('USD')->charge();
+
+        FakeGateway::willReturn(new PaymentResponse(
+            status: TransactionStatus::Voided,
+            type: TransactionType::Void,
+            gatewayName: 'fake',
+            gatewayTransactionId: 'fake-sale-1',
+            currency: 'USD',
+        ));
+
+        Payline::payment(Payment::firstOrFail())->void();
+
+        $this->assertSame('USD', FakeGateway::lastVoid()->currency);
+    }
+
     public function test_void_after_capture_is_rejected(): void
     {
         $payment = $this->authorizedPayment();

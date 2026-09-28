@@ -224,6 +224,59 @@ class ReconcileTest extends TestCase
         $this->assertSame(PaymentStatus::Paid, $payment->fresh()->status);
     }
 
+    public function test_the_query_carries_the_currency_of_the_transaction(): void
+    {
+        FakeGateway::willReturn(new PaymentResponse(
+            status: TransactionStatus::Successful,
+            type: TransactionType::Payment,
+            gatewayName: 'fake',
+            gatewayTransactionId: 'fake-sale-1',
+            currency: 'USD',
+        ));
+
+        Payline::via('fake')->reference('ORD-USD')->amount(10000)->currency('USD')->charge();
+
+        FakeGateway::willAnswerQuery(new PaymentResponse(
+            status: TransactionStatus::Successful,
+            type: TransactionType::Payment,
+            gatewayName: 'fake',
+            gatewayTransactionId: 'fake-sale-1',
+            currency: 'USD',
+        ));
+
+        Payline::payment(Payment::firstOrFail())->reconcile();
+
+        $this->assertSame('USD', FakeGateway::lastQuery()->currency);
+    }
+
+    public function test_a_gateway_that_reports_no_currency_still_reconciles(): void
+    {
+        FakeGateway::willReturn(new PaymentResponse(
+            status: TransactionStatus::Successful,
+            type: TransactionType::Payment,
+            gatewayName: 'fake',
+            gatewayTransactionId: 'fake-sale-1',
+            currency: 'EUR',
+        ));
+
+        Payline::via('fake')->reference('ORD-EUR')->amount(10000)->currency('EUR')->charge();
+
+        FakeGateway::willAnswerQuery(new PaymentResponse(
+            status: TransactionStatus::Successful,
+            type: TransactionType::Payment,
+            gatewayName: 'fake',
+            gatewayTransactionId: 'fake-sale-1',
+            refundedAmount: 0,
+        ));
+
+        $payment = Payment::firstOrFail();
+
+        Payline::payment($payment)->reconcile();
+
+        $this->assertSame(PaymentStatus::Paid, $payment->fresh()->status);
+        $this->assertSame('EUR', $payment->fresh()->currency);
+    }
+
     private function orderAnswers(
         ?int $refundedAmount,
         ?bool $voided = false,

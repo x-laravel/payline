@@ -2,6 +2,7 @@
 
 namespace XLaravel\Payline\Payments;
 
+use Illuminate\Http\Client\ConnectionException;
 use Throwable;
 use XLaravel\Payline\DTOs\PaymentResponse;
 use XLaravel\Payline\Enums\TransactionStatus;
@@ -28,6 +29,18 @@ class TransactionRunner
     {
         try {
             $response = $action();
+        } catch (ConnectionException $exception) {
+            $this->markUnknown($payment, $transaction, $exception);
+
+            return new PaymentResponse(
+                status: TransactionStatus::Unknown,
+                type: $transaction->type,
+                gatewayName: $payment->gateway,
+                gatewayTransactionId: $transaction->gateway_transaction_id,
+                amount: (int) $transaction->amount,
+                currency: $transaction->currency,
+                errorMessage: $exception->getMessage(),
+            );
         } catch (Throwable $exception) {
             $this->markUnknown($payment, $transaction, $exception);
 
@@ -68,7 +81,8 @@ class TransactionRunner
             throw new UnexpectedGatewayResponseException('Gateway response operation does not match the transaction.');
         }
 
-        if (strtoupper($response->currency) !== strtoupper($transaction->currency)) {
+        if ($response->currency !== null
+            && strtoupper($response->currency) !== strtoupper($transaction->currency)) {
             throw new UnexpectedGatewayResponseException('Gateway response currency does not match the transaction.');
         }
     }

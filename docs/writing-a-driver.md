@@ -131,7 +131,9 @@ An empty array means no restriction on that dimension. `partialRefunds`, `webhoo
 | Authorization or session lapsed | `Expired` |
 | Outcome not determinable | `Unknown` |
 
-Return `Unknown` rather than `Failed` when a request times out or the answer cannot be parsed. `Failed` is a settled state and closes the transaction; `Unknown` leaves it open for reconciliation.
+Return `Unknown` rather than `Failed` when the answer cannot be parsed. `Failed` is a settled state and closes the transaction; `Unknown` leaves it open for reconciliation.
+
+A driver does not have to catch a connection failure. Laravel's HTTP client throws `ConnectionException` when it cannot reach the provider or the request times out, and Payline records the transaction as `unknown` and returns an `Unknown` response, so a caller only ever reads a status. Every other exception is recorded the same way and then rethrown, because it is the driver's own fault rather than the provider's silence.
 
 Providers usually report an order whose customer never finished 3D Secure as a failure, with a code that means "not completed". Return `Pending` for it, not `Failed`: the same answer comes back for a customer who is still on the provider's page, and `Failed` would close a transaction that is about to succeed. Payline turns a pending answer into `Expired` once the transaction is past its deadline.
 
@@ -215,6 +217,10 @@ return new PaymentResponse(
 ```
 
 `refundedAmount` is the returned total in minor units. Leave both fields `null` whenever the answer does not describe a real order, such as one the provider cannot find: `null` means no claim, while `0` and `false` claim that nothing was returned and nothing was cancelled, which fails an open refund or void.
+
+`PaymentQuery::$currency` and `VoidData::$currency` carry the currency of the transaction they act on, so send them rather than the provider's default. When the answer does not name a currency, fall back to the one that was asked about.
+
+`PaymentResponse::$currency` is `null` when the provider says nothing about it, which is the honest answer for a provider that never echoes the currency back. `assertMatches` rejects a response whose currency contradicts the transaction and accepts one that makes no claim, so never fill the field with a guess such as `TRY`.
 
 ## Publishing Commission Rates
 

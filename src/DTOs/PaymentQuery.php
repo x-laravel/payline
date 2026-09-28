@@ -10,6 +10,7 @@ readonly class PaymentQuery
         public ?string $gatewayTransactionId = null,
         public ?string $gatewayOrderId = null,
         public ?string $reference = null,
+        public string $currency = 'TRY',
         public ?array $metadata = null,
     ) {
         if ($this->gatewayTransactionId === null

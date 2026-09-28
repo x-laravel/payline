@@ -18,7 +18,7 @@ readonly class PaymentResponse
         public ?string $gatewayResponseCode = null,
         public ?string $gatewayResponseMessage = null,
         public int $amount = 0,
-        public string $currency = 'TRY',
+        public ?string $currency = null,
         public ?string $redirectUrl = null,
         public ?string $redirectForm = null,
         public ?string $errorCode = null,

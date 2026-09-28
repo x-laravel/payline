@@ -20,6 +20,7 @@ use XLaravel\Payline\DTOs\RefundData;
 use XLaravel\Payline\DTOs\VoidData;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Enums\TransactionType;
+use Throwable;
 
 class FakeGateway implements
     AuthorizesPayments,
@@ -36,6 +37,17 @@ class FakeGateway implements
 
     private static ?PaymentResponse $queryAnswer = null;
 
+    private static ?Throwable $nextFailure = null;
+
+    private static ?PaymentQuery $lastQuery = null;
+
+    private static ?VoidData $lastVoid = null;
+
+    public static function willThrow(Throwable $exception): void
+    {
+        self::$nextFailure = $exception;
+    }
+
     public static function willReturn(PaymentResponse $response): void
     {
         self::$nextResponse = $response;
@@ -50,10 +62,20 @@ class FakeGateway implements
     {
         self::$nextResponse = null;
         self::$queryAnswer = null;
+        self::$nextFailure = null;
+        self::$lastQuery = null;
+        self::$lastVoid = null;
+    }
+
+    public static function lastQuery(): ?PaymentQuery
+    {
+        return self::$lastQuery;
     }
 
     public function queryPayment(PaymentQuery $query): PaymentResponse
     {
+        self::$lastQuery = $query;
+
         return self::$queryAnswer ?? $this->response(TransactionType::Payment);
     }
 
@@ -79,7 +101,14 @@ class FakeGateway implements
 
     public function void(VoidData $data): PaymentResponse
     {
+        self::$lastVoid = $data;
+
         return $this->response(TransactionType::Void, TransactionStatus::Voided);
+    }
+
+    public static function lastVoid(): ?VoidData
+    {
+        return self::$lastVoid;
     }
 
     public function handleCallback(CallbackData $data): PaymentResponse
@@ -106,6 +135,13 @@ class FakeGateway implements
         TransactionType $type,
         TransactionStatus $status = TransactionStatus::Successful,
     ): PaymentResponse {
+        if (self::$nextFailure !== null) {
+            $failure = self::$nextFailure;
+            self::$nextFailure = null;
+
+            throw $failure;
+        }
+
         if (self::$nextResponse !== null) {
             $response = self::$nextResponse;
             self::$nextResponse = null;

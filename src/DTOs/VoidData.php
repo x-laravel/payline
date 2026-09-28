@@ -8,11 +8,16 @@ readonly class VoidData
 {
     public function __construct(
         public string $gatewayTransactionId,
+        public string $currency = 'TRY',
         public ?array $metadata = null,
         public ?string $idempotencyKey = null,
     ) {
         if (trim($this->gatewayTransactionId) === '') {
             throw new InvalidArgumentException('Gateway transaction ID cannot be empty.');
+        }
+
+        if (! preg_match('/^[A-Z]{3}$/', strtoupper($this->currency))) {
+            throw new InvalidArgumentException('Void currency must be a three-letter ISO code.');
         }
 
         if ($this->idempotencyKey !== null && trim($this->idempotencyKey) === '') {
