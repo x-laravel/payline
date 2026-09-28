@@ -34,7 +34,7 @@ return [
     ],
 
     'bin_lookup' => [
-        'default' => env('PAYLINE_BIN_LOOKUP_DRIVER', 'null'),
+        'providers' => [],
         'drivers' => [],
     ],
 

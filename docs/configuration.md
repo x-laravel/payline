@@ -103,10 +103,25 @@ Policies are resolved from the container. A class that does not implement the co
 
 | Key | Type | Default | Meaning |
 |-----|------|---------|---------|
-| `bin_lookup.default` | `string` | `env('PAYLINE_BIN_LOOKUP_DRIVER', 'null')` | BIN lookup driver name |
+| `bin_lookup.providers` | `array` | `[]` | Driver names to consult, in order |
 | `bin_lookup.drivers` | `array` | `[]` | Per driver settings, keyed by driver name |
 
-The `null` driver resolves no card profile, which leaves commission routing inactive.
+Every provider in the list is asked, and their answers are merged into one card profile. A field belongs to the first provider that fills it, so the order is a statement of which source to trust:
+
+```php
+'bin_lookup' => [
+    'providers' => ['hoppa', 'handyapi'],
+    'drivers' => [
+        'handyapi' => ['api_key' => env('HANDYAPI_KEY')],
+    ],
+],
+```
+
+No single service answers everything. Turkish services name the card family that commission rates are keyed on but no country of issuance; international ones name the country but no family. Listing both gives a profile with both.
+
+An empty list resolves no card profile, which leaves commission routing inactive.
+
+A provider that cannot be reached is stepped over, and the remaining ones still answer. Any other failure is left to surface, since it means the provider is broken rather than unavailable.
 
 ## Transactions
 
@@ -174,7 +189,6 @@ Matching is case insensitive and recurses into nested arrays. Redaction happens 
 | `PAYLINE_TEST_MODE` | `test_mode` |
 | `PAYLINE_CURRENCY` | `currency` |
 | `PAYLINE_DB_CONNECTION` | `database.connection` |
-| `PAYLINE_BIN_LOOKUP_DRIVER` | `bin_lookup.default` |
 | `PAYLINE_PENDING_TTL` | `transactions.pending_ttl` |
 | `PAYLINE_CALLBACK_SUCCESS_URL` | `callback_success_url` |
 | `PAYLINE_CALLBACK_FAILURE_URL` | `callback_failure_url` |

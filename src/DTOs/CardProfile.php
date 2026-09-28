@@ -31,6 +31,36 @@ readonly class CardProfile
         public array $raw = [],
     ) {}
 
+    /**
+     * Returns a profile carrying this one's fields, with every field it leaves
+     * open filled from the other. Nothing already known is overwritten.
+     */
+    public function mergedWith(?CardProfile $other): self
+    {
+        if ($other === null) {
+            return $this;
+        }
+
+        return new self(
+            bin: $this->bin ?? $other->bin,
+            scheme: $this->scheme ?? $other->scheme,
+            localSchemes: $this->localSchemes !== [] ? $this->localSchemes : $other->localSchemes,
+            type: $this->type ?? $other->type,
+            category: $this->category ?? $other->category,
+            family: $this->family ?? $other->family,
+            productId: $this->productId ?? $other->productId,
+            productType: $this->productType ?? $other->productType,
+            issuer: $this->issuer ?? $other->issuer,
+            issuerCode: $this->issuerCode ?? $other->issuerCode,
+            issuerCountry: $this->issuerCountry ?? $other->issuerCountry,
+            currency: $this->currency ?? $other->currency,
+            prepaid: $this->prepaid ?? $other->prepaid,
+            numberLength: $this->numberLength ?? $other->numberLength,
+            source: $this->source ?? $other->source,
+            raw: $this->raw + $other->raw,
+        );
+    }
+
     public function isCoBadged(): bool
     {
         return $this->localSchemes !== [];

@@ -55,6 +55,78 @@ class CardProfileTest extends TestCase
         $this->assertFalse($profile->supports(CardScheme::Amex));
     }
 
+    public function test_merging_fills_what_a_profile_leaves_open(): void
+    {
+        $merged = (new CardProfile(family: 'maximum', issuerCode: '64'))
+            ->mergedWith(new CardProfile(issuerCountry: 'TR', scheme: CardScheme::Mastercard));
+
+        $this->assertSame('maximum', $merged->family);
+        $this->assertSame('64', $merged->issuerCode);
+        $this->assertSame('TR', $merged->issuerCountry);
+        $this->assertSame(CardScheme::Mastercard, $merged->scheme);
+    }
+
+    public function test_merging_carries_every_field_the_profile_has(): void
+    {
+        $full = new CardProfile(
+            bin: '45717360',
+            scheme: CardScheme::Visa,
+            localSchemes: [CardScheme::Troy],
+            type: CardType::Debit,
+            category: CardCategory::Consumer,
+            family: 'bonus',
+            productId: 'F',
+            productType: 'classic',
+            issuer: 'Jyske Bank A/S',
+            issuerCode: '64',
+            issuerCountry: 'DK',
+            currency: 'DKK',
+            prepaid: true,
+            numberLength: 16,
+            source: 'test',
+            raw: ['scheme' => 'visa'],
+        );
+
+        $merged = (new CardProfile())->mergedWith($full);
+
+        foreach (get_object_vars($full) as $field => $value) {
+            $this->assertSame($value, $merged->$field, "mergedWith() dropped {$field}");
+        }
+    }
+
+    public function test_merging_keeps_what_a_profile_already_knows(): void
+    {
+        $merged = (new CardProfile(type: CardType::Credit, issuer: 'IS BANK'))
+            ->mergedWith(new CardProfile(type: CardType::Debit, issuer: 'Turkiye Is Bankasi A.S.'));
+
+        $this->assertSame(CardType::Credit, $merged->type);
+        $this->assertSame('IS BANK', $merged->issuer);
+    }
+
+    public function test_merging_keeps_a_false_apart_from_an_unknown(): void
+    {
+        $merged = (new CardProfile(prepaid: false))->mergedWith(new CardProfile(prepaid: true));
+
+        $this->assertFalse($merged->prepaid);
+        $this->assertTrue((new CardProfile())->mergedWith(new CardProfile(prepaid: true))->prepaid);
+    }
+
+    public function test_merging_with_nothing_changes_nothing(): void
+    {
+        $profile = new CardProfile(family: 'bonus');
+
+        $this->assertSame($profile, $profile->mergedWith(null));
+    }
+
+    public function test_merging_carries_both_raw_payloads(): void
+    {
+        $merged = (new CardProfile(source: 'hoppa', raw: ['Card_Family' => 'Maximum']))
+            ->mergedWith(new CardProfile(source: 'handyapi', raw: ['Scheme' => 'MASTERCARD']));
+
+        $this->assertSame('hoppa', $merged->source);
+        $this->assertSame(['Card_Family' => 'Maximum', 'Scheme' => 'MASTERCARD'], $merged->raw);
+    }
+
     public function test_scheme_names_are_parsed_the_way_each_provider_spells_them(): void
     {
         $this->assertSame(CardScheme::Mastercard, CardScheme::parse('MASTERCARD'));

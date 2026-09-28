@@ -94,7 +94,17 @@ $this->app->make('payline.bin_lookup')->extend(
 );
 ```
 
-Point `payline.bin_lookup.default` at the driver name and put its settings under `payline.bin_lookup.drivers.<name>`. A provider implements `BinLookupProvider`, which receives the eight digit BIN and returns a `CardProfile` or `null`.
+List the driver name under `payline.bin_lookup.providers` and put its settings under `payline.bin_lookup.drivers.<name>`. A provider implements `BinLookupProvider`, which receives the eight digit BIN and returns a `CardProfile` or `null`.
+
+Every listed provider is asked and the answers are merged, a field belonging to the first provider that fills it. No single service answers everything: a Turkish one names the card family these rates are keyed on but no country, an international one the reverse.
+
+```php
+'bin_lookup' => [
+    'providers' => ['hoppa', 'handyapi'],
+],
+```
+
+A provider that cannot be reached is stepped over rather than taking the lookup down with it. A `ConnectionException` from one leaves the others to answer, and a lookup where none of them answer resolves nothing, which is what an unconfigured lookup does too.
 
 The settings array carries `test_mode` the way a gateway's does, so a provider with a test environment of its own chooses between its addresses without reading the global configuration.
 
