@@ -298,6 +298,8 @@ php artisan payline:reconcile
 php artisan payline:reconcile --gateway=iyzico --limit=50
 ```
 
+An abandoned 3D Secure page looks the same to a provider as one the customer is still reading, so a driver reports both as `Pending`. Payline records the answer as `expired` once the transaction is past the deadline the driver set, or past `payline.transactions.pending_ttl` when it set none.
+
 ## Models and events
 
 `Payment` represents the aggregate state of a checkout attempt. `Transaction` represents an individual provider operation.

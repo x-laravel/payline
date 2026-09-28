@@ -99,6 +99,8 @@ php artisan payline:reconcile
 php artisan payline:reconcile --gateway=iyzico --limit=50
 ```
 
+Most of what the command finds are 3D Secure pages the customer walked away from. The provider answers those with "not completed", which a driver reports as `Pending`, and Payline records it as `expired` once the transaction is past its deadline. See [transactions](configuration.md#transactions) for where that deadline comes from.
+
 The command processes the least recently updated payments first, defaults to 100 per run, reports failures through Laravel's exception handler, and exits with a failure code when any payment could not be reconciled.
 
 ## Reading the Amounts

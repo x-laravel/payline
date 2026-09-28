@@ -7,6 +7,7 @@
 - [Callback URLs](#callback-urls)
 - [Routing](#routing)
 - [BIN Lookup](#bin-lookup)
+- [Transactions](#transactions)
 - [Database](#database)
 - [Models](#models)
 - [Storage](#storage)
@@ -78,6 +79,18 @@ Policies are resolved from the container. A class that does not implement the co
 
 The `null` driver resolves no card profile, which leaves commission routing inactive.
 
+## Transactions
+
+| Key | Type | Default | Meaning |
+|-----|------|---------|---------|
+| `transactions.pending_ttl` | `?int` | `env('PAYLINE_PENDING_TTL', 60)` | Minutes a pending transaction may wait for the customer, when the driver names no deadline of its own |
+
+A customer who abandons a 3D Secure page leaves the transaction waiting, and providers answer a status query for such an order with "not completed", which is indistinguishable from a customer who is still on the page. Payline settles the difference with time: a pending answer for a transaction that is past its deadline is recorded as `expired` instead.
+
+The deadline is the `expiresAt` the driver returned when it started the payment, and this TTL counted from the transaction's creation when it returned none. Set the key to `null` to let pending transactions wait indefinitely.
+
+An answer that actually settles the transaction always wins over the deadline, so a customer who completes the payment late is still recorded as paid.
+
 ## Database
 
 | Key | Type | Default | Meaning |
@@ -132,6 +145,7 @@ Matching is case insensitive and recurses into nested arrays. Redaction happens 
 | `PAYLINE_CURRENCY` | `currency` |
 | `PAYLINE_DB_CONNECTION` | `database.connection` |
 | `PAYLINE_BIN_LOOKUP_DRIVER` | `bin_lookup.default` |
+| `PAYLINE_PENDING_TTL` | `transactions.pending_ttl` |
 | `PAYLINE_CALLBACK_SUCCESS_URL` | `callback_success_url` |
 | `PAYLINE_CALLBACK_FAILURE_URL` | `callback_failure_url` |
 

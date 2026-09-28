@@ -133,6 +133,8 @@ An empty array means no restriction on that dimension. `partialRefunds`, `webhoo
 
 Return `Unknown` rather than `Failed` when a request times out or the answer cannot be parsed. `Failed` is a settled state and closes the transaction; `Unknown` leaves it open for reconciliation.
 
+Providers usually report an order whose customer never finished 3D Secure as a failure, with a code that means "not completed". Return `Pending` for it, not `Failed`: the same answer comes back for a customer who is still on the provider's page, and `Failed` would close a transaction that is about to succeed. Payline turns a pending answer into `Expired` once the transaction is past its deadline.
+
 ## Returning a Redirect
 
 For 3D Secure, return `Pending` with either a URL or an HTML form:
@@ -144,10 +146,13 @@ return new PaymentResponse(
     gatewayName: $this->getName(),
     gatewayTransactionId: $data->reference,
     redirectUrl: $result['redirect_url'],
+    expiresAt: now()->addMinutes(30),
 );
 ```
 
 Use `redirectForm` instead when the provider answers with a self submitting form. The application decides how to deliver it.
+
+`expiresAt` is the provider's own session window. Without it Payline falls back to `payline.transactions.pending_ttl`.
 
 Payline fills `PaymentRequest::$callbackUrl` with its own callback route when the application did not set one, so send the customer back to that URL.
 

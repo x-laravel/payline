@@ -40,6 +40,10 @@ return [
         'policies' => [],
     ],
 
+    'transactions' => [
+        'pending_ttl' => env('PAYLINE_PENDING_TTL', 60),
+    ],
+
     'models' => [
         'payment' => XLaravel\Payline\Models\Payment::class,
         'transaction' => XLaravel\Payline\Models\Transaction::class,
