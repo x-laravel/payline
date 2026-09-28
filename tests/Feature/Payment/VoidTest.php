@@ -31,6 +31,15 @@ class VoidTest extends TestCase
         ]);
     }
 
+    public function test_void_carries_the_amount_of_the_sale(): void
+    {
+        $payment = $this->chargedPayment();
+
+        Payline::payment($payment)->void();
+
+        $this->assertSame(10000, FakeGateway::lastVoid()->amount);
+    }
+
     public function test_void_carries_the_currency_of_the_sale(): void
     {
         FakeGateway::willReturn(new PaymentResponse(

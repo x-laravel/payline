@@ -94,6 +94,8 @@ The driver must implement `QueriesPayments`. Providers answer a status query abo
 
 A refund or a void whose own call was never answered stays open. Payline settles those from the same order snapshot: `PaymentResponse::$refundedAmount` and `PaymentResponse::$voided` say how much the provider has returned and whether the order was cancelled, and each open follow-up is recorded as successful when the order accounts for it and failed when it does not. Without those two fields the follow-up is left open, which is what happens when the provider cannot find the order at all.
 
+The two fields cover for each other, because a provider decides for itself which of the two names it gives an operation. A cancelled order covers its open refunds up to the payment amount, and an order that has returned its full amount settles an open void. Otherwise the same reversal would be recorded as failed purely because the provider called it the other thing, while the money had already moved.
+
 This is what keeps a payment from locking up: an unanswered refund makes the payment `unknown`, and a payment that is `unknown` accepts no further refund or void until reconciliation resolves it.
 
 Run it in bulk for payments that are `pending` or `unknown`:

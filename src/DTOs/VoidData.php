@@ -8,12 +8,17 @@ readonly class VoidData
 {
     public function __construct(
         public string $gatewayTransactionId,
+        public int $amount,
         public string $currency = 'TRY',
         public ?array $metadata = null,
         public ?string $idempotencyKey = null,
     ) {
         if (trim($this->gatewayTransactionId) === '') {
             throw new InvalidArgumentException('Gateway transaction ID cannot be empty.');
+        }
+
+        if ($this->amount <= 0) {
+            throw new InvalidArgumentException('Void amount must be greater than zero.');
         }
 
         if (! preg_match('/^[A-Z]{3}$/', strtoupper($this->currency))) {

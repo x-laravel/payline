@@ -45,7 +45,11 @@ class FollowUpReconciler
 
     private function settleRefunds(Payment $payment, PaymentResponse $order): void
     {
-        if ($order->refundedAmount === null) {
+        $covered = $order->voided === true
+            ? (int) $payment->amount
+            : $order->refundedAmount;
+
+        if ($covered === null) {
             return;
         }
 
@@ -54,7 +58,7 @@ class FollowUpReconciler
             ->sum('amount');
 
         foreach ($this->openTransactions($payment, TransactionType::Refund) as $refund) {
-            $accountedFor = $accepted + (int) $refund->amount <= $order->refundedAmount;
+            $accountedFor = $accepted + (int) $refund->amount <= $covered;
 
             $this->record($refund, $order, $accountedFor
                 ? TransactionStatus::Successful
@@ -68,15 +72,30 @@ class FollowUpReconciler
 
     private function settleVoids(Payment $payment, PaymentResponse $order): void
     {
-        if ($order->voided === null) {
+        $released = $this->orderWasReleased($payment, $order);
+
+        if ($released === null) {
             return;
         }
 
         foreach ($this->openTransactions($payment, TransactionType::Void) as $void) {
-            $this->record($void, $order, $order->voided
+            $this->record($void, $order, $released
                 ? TransactionStatus::Voided
                 : TransactionStatus::Failed);
         }
+    }
+
+    private function orderWasReleased(Payment $payment, PaymentResponse $order): ?bool
+    {
+        if ($order->voided === true) {
+            return true;
+        }
+
+        if ($order->refundedAmount !== null && $order->refundedAmount >= (int) $payment->amount) {
+            return true;
+        }
+
+        return $order->voided;
     }
 
     /** @return Collection<int, Transaction> */

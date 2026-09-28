@@ -70,6 +70,7 @@ class PaymentOperations
 
         return $this->perform(TransactionType::Void, new VoidData(
             gatewayTransactionId: $this->providerTransactionId($parent),
+            amount: (int) $parent->amount,
             currency: $parent->currency,
             metadata: $metadata,
             idempotencyKey: $idempotencyKey,

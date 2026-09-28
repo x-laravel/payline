@@ -150,6 +150,49 @@ class ReconcileTest extends TestCase
         Event::assertDispatched(PaymentRefunded::class);
     }
 
+    public function test_a_cancelled_order_settles_an_open_refund(): void
+    {
+        $payment = $this->paymentWithUnknownRefund(10000);
+
+        $this->orderAnswers(refundedAmount: 0, voided: true);
+
+        Payline::payment($payment)->reconcile();
+
+        $this->assertSame(TransactionStatus::Successful, $this->refund()->status);
+        $this->assertSame(PaymentStatus::Refunded, $payment->fresh()->status);
+        $this->assertSame(10000, $payment->fresh()->totalRefunded());
+    }
+
+    public function test_a_cancelled_order_covers_only_up_to_the_payment_amount(): void
+    {
+        $payment = $this->paidPayment();
+
+        FakeGateway::willReturn(new PaymentResponse(
+            status: TransactionStatus::Successful,
+            type: TransactionType::Refund,
+            gatewayName: 'fake',
+            gatewayTransactionId: 'fake-sale-1',
+        ));
+        Payline::payment($payment)->refund(amount: 6000, idempotencyKey: 'first');
+
+        $beyondTheCeiling = Transaction::create([
+            'payment_id' => $payment->getKey(),
+            'type' => TransactionType::Refund->value,
+            'status' => TransactionStatus::Unknown->value,
+            'amount' => 6000,
+            'currency' => 'TRY',
+            'attempt' => 2,
+            'request_hash' => str_repeat('c', 64),
+        ]);
+
+        $this->orderAnswers(refundedAmount: 0, voided: true);
+
+        Payline::payment($payment->fresh())->reconcile();
+
+        $this->assertSame(TransactionStatus::Failed, $beyondTheCeiling->fresh()->status);
+        $this->assertSame(6000, $payment->fresh()->totalRefunded());
+    }
+
     public function test_an_unknown_void_the_order_confirms_is_settled(): void
     {
         $payment = $this->paymentWithUnknownVoid();
@@ -159,6 +202,47 @@ class ReconcileTest extends TestCase
         Payline::payment($payment)->reconcile();
 
         $this->assertSame(PaymentStatus::Voided, $payment->fresh()->status);
+    }
+
+    public function test_an_open_void_the_order_returned_in_full_is_settled(): void
+    {
+        $payment = $this->paymentWithUnknownVoid();
+
+        $this->orderAnswers(refundedAmount: 10000, voided: false);
+
+        Payline::payment($payment)->reconcile();
+
+        $this->assertSame(PaymentStatus::Voided, $payment->fresh()->status);
+    }
+
+    public function test_an_open_void_the_order_only_partly_returned_is_failed(): void
+    {
+        $payment = $this->paymentWithUnknownVoid();
+
+        $this->orderAnswers(refundedAmount: 4000, voided: false);
+
+        Payline::payment($payment)->reconcile();
+
+        $void = Transaction::query()
+            ->where('type', TransactionType::Void->value)
+            ->firstOrFail();
+
+        $this->assertSame(TransactionStatus::Failed, $void->status);
+    }
+
+    public function test_an_order_that_claims_nothing_leaves_an_open_void_alone(): void
+    {
+        $payment = $this->paymentWithUnknownVoid();
+
+        $this->orderAnswers(refundedAmount: null, voided: null, status: TransactionStatus::Unknown);
+
+        Payline::payment($payment)->reconcile();
+
+        $void = Transaction::query()
+            ->where('type', TransactionType::Void->value)
+            ->firstOrFail();
+
+        $this->assertSame(TransactionStatus::Unknown, $void->status);
     }
 
     public function test_an_order_the_gateway_cannot_describe_leaves_the_follow_up_open(): void

@@ -220,6 +220,8 @@ return new PaymentResponse(
 
 `PaymentQuery::$currency` and `VoidData::$currency` carry the currency of the transaction they act on, so send them rather than the provider's default. When the answer does not name a currency, fall back to the one that was asked about.
 
+`VoidData::$amount` is the full amount of the transaction being released. A provider whose void takes no amount ignores it; one that cancels through its refund endpoint sends it, which is how it asks for a cancellation rather than a partial refund.
+
 `PaymentResponse::$currency` is `null` when the provider says nothing about it, which is the honest answer for a provider that never echoes the currency back. `assertMatches` rejects a response whose currency contradicts the transaction and accepts one that makes no claim, so never fill the field with a guess such as `TRY`.
 
 ## Publishing Commission Rates
