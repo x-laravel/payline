@@ -55,9 +55,12 @@ Name the default gateway in the environment:
 
 ```shell
 PAYLINE_GATEWAY=iyzico
+PAYLINE_TEST_MODE=true
 ```
 
 Resolving a gateway without a configured default throws a `RuntimeException`.
+
+`PAYLINE_TEST_MODE` sends every gateway to its provider's test environment. It defaults to `false`, so an installation that never sets it talks to the live one. Test environments have their own merchant credentials, which belong in the gateway's own environment variables.
 
 ## Publish the Configuration
 

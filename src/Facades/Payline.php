@@ -20,6 +20,7 @@ use XLaravel\Payline\PendingPaymentBuilder;
  * @method static Gateway gateway(?string $name = null)
  * @method static bool hasGateway(string $name)
  * @method static string[] registeredGateways()
+ * @method static bool testMode()
  * @method static PendingPayment via(?string $gateway = null)
  * @method static PendingPayment viaAuto()
  * @method static PendingPaymentBuilder for(Payable $payable)

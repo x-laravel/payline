@@ -26,7 +26,10 @@ class BinLookupManager extends Manager
 
     protected function callCustomCreator($driver): BinLookupProvider
     {
-        $config = $this->config->get("payline.bin_lookup.drivers.{$driver}", []);
+        $config = [
+            'test_mode' => (bool) $this->config->get('payline.test_mode', false),
+            ...$this->config->get("payline.bin_lookup.drivers.{$driver}", []),
+        ];
         return $this->customCreators[$driver]($this->container, $config);
     }
 }

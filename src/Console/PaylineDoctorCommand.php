@@ -16,6 +16,7 @@ class PaylineDoctorCommand extends Command
     public function handle(PaylineManager $manager): int
     {
         $checks = [
+            'Mode' => fn () => $manager->testMode() ? 'test' : 'live',
             'Default gateway' => fn () => $manager->gateway()->getName(),
             'Payments table' => fn () => $this->assertTable('payline_payments'),
             'Transactions table' => fn () => $this->assertTable('payline_transactions'),

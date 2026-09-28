@@ -37,6 +37,7 @@ php artisan vendor:publish --tag=payline-config
 
 ```env
 PAYLINE_GATEWAY=iyzico
+PAYLINE_TEST_MODE=true
 ```
 
 Verify the installation:
@@ -427,6 +428,8 @@ Important `config/payline.php` options:
 ```php
 return [
     'default' => env('PAYLINE_GATEWAY'),
+
+    'test_mode' => env('PAYLINE_TEST_MODE', false),
 
     'currency' => env('PAYLINE_CURRENCY', 'TRY'),
 

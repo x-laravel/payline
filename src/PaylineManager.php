@@ -54,6 +54,11 @@ class PaylineManager extends Manager
         return array_keys($this->customCreators);
     }
 
+    public function testMode(): bool
+    {
+        return (bool) $this->config->get('payline.test_mode', false);
+    }
+
     public function via(?string $gateway = null): PendingPayment
     {
         return $this->pendingPayment(
@@ -97,7 +102,10 @@ class PaylineManager extends Manager
     {
         return $this->customCreators[$driver](
             $this->container,
-            $this->config->get("payline.gateways.{$driver}", []),
+            [
+                'test_mode' => $this->testMode(),
+                ...$this->config->get("payline.gateways.{$driver}", []),
+            ],
         );
     }
 

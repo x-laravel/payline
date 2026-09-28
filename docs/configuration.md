@@ -2,6 +2,7 @@
 
 - [Publishing](#publishing)
 - [Gateways](#gateways)
+- [Test Mode](#test-mode)
 - [Currency](#currency)
 - [Routes](#routes)
 - [Callback URLs](#callback-urls)
@@ -30,6 +31,34 @@ The file is merged, so an unpublished configuration uses the package defaults an
 | `gateways` | `array` | one `iyzico` example | Per gateway settings, keyed by gateway name |
 
 Each entry under `gateways` is passed to the gateway factory as its configuration array. Its contents are defined by the gateway package. Resolving a gateway with no `default` set throws a `RuntimeException`.
+
+## Test Mode
+
+| Key | Type | Default | Meaning |
+|-----|------|---------|---------|
+| `test_mode` | `bool` | `env('PAYLINE_TEST_MODE', false)` | Sends every gateway to its provider's test environment |
+
+The flag reaches gateway and BIN lookup factories as `test_mode` in the configuration array they receive. A gateway package ships both of its provider's addresses and chooses between them; Payline knows no provider address of its own.
+
+```php
+Payline::testMode(); // bool
+```
+
+A gateway entry may declare its own `test_mode`, which wins over the global flag. That leaves a single provider in its test environment while the rest stay live, which is what certification for a new bank usually needs.
+
+```php
+'test_mode' => false,
+
+'gateways' => [
+    'qnb' => [
+        'test_mode' => true,
+    ],
+],
+```
+
+A `base_url` given in a gateway entry wins over both addresses the package ships.
+
+The flag carries no credentials. A test environment has its own merchant identifiers, keys and passwords, so turning the flag off also means replacing those values.
 
 ## Currency
 
@@ -142,6 +171,7 @@ Matching is case insensitive and recurses into nested arrays. Redaction happens 
 | Variable | Used by |
 |----------|---------|
 | `PAYLINE_GATEWAY` | `default` |
+| `PAYLINE_TEST_MODE` | `test_mode` |
 | `PAYLINE_CURRENCY` | `currency` |
 | `PAYLINE_DB_CONNECTION` | `database.connection` |
 | `PAYLINE_BIN_LOOKUP_DRIVER` | `bin_lookup.default` |

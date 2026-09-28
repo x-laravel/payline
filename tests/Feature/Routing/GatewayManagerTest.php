@@ -3,6 +3,7 @@
 namespace XLaravel\Payline\Tests\Feature\Routing;
 
 use RuntimeException;
+use XLaravel\Payline\BinLookup\NullBinLookupProvider;
 use XLaravel\Payline\PaylineManager;
 use XLaravel\Payline\Tests\Fixtures\Gateways\FakeGateway;
 use XLaravel\Payline\Tests\Fixtures\Gateways\LimitedGateway;
@@ -54,5 +55,63 @@ class GatewayManagerTest extends TestCase
         $this->expectExceptionMessage('PAYLINE_GATEWAY');
 
         $this->manager()->gateway();
+    }
+
+    public function test_test_mode_is_off_until_it_is_turned_on(): void
+    {
+        $this->assertFalse($this->manager()->testMode());
+
+        config(['payline.test_mode' => true]);
+
+        $this->assertTrue($this->manager()->testMode());
+    }
+
+    public function test_a_gateway_factory_is_told_the_mode(): void
+    {
+        config(['payline.test_mode' => true]);
+
+        $this->assertTrue($this->configPassedToGateway()['test_mode']);
+    }
+
+    public function test_a_gateway_keeps_the_mode_its_own_config_declares(): void
+    {
+        config([
+            'payline.test_mode' => true,
+            'payline.gateways.spy' => ['test_mode' => false],
+        ]);
+
+        $this->assertFalse($this->configPassedToGateway()['test_mode']);
+    }
+
+    public function test_a_bin_lookup_factory_is_told_the_mode(): void
+    {
+        config(['payline.test_mode' => true]);
+
+        $received = [];
+
+        $this->app->make('payline.bin_lookup')->extend('spy', function ($app, array $config) use (&$received) {
+            $received = $config;
+
+            return new NullBinLookupProvider();
+        });
+
+        $this->app->make('payline.bin_lookup')->driver('spy');
+
+        $this->assertTrue($received['test_mode']);
+    }
+
+    private function configPassedToGateway(): array
+    {
+        $received = [];
+
+        $this->manager()->extend('spy', function ($app, array $config) use (&$received) {
+            $received = $config;
+
+            return new LimitedGateway();
+        });
+
+        $this->manager()->gateway('spy');
+
+        return $received;
     }
 }

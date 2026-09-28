@@ -3,6 +3,8 @@
 return [
     'default' => env('PAYLINE_GATEWAY'),
 
+    'test_mode' => env('PAYLINE_TEST_MODE', false),
+
     'currency' => env('PAYLINE_CURRENCY', 'TRY'),
 
     'gateways' => [

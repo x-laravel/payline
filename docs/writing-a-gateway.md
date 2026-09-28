@@ -4,6 +4,7 @@
 - [Contracts](#contracts)
 - [A Minimal Gateway](#a-minimal-gateway)
 - [Registering the Gateway](#registering-the-gateway)
+- [Test and Live Addresses](#test-and-live-addresses)
 - [Declaring Capabilities](#declaring-capabilities)
 - [Mapping Provider Results to Statuses](#mapping-provider-results-to-statuses)
 - [Returning a Redirect](#returning-a-redirect)
@@ -94,7 +95,34 @@ public function boot(): void
 }
 ```
 
-The closure receives the container and `config('payline.gateways.my-gateway')`, which is an empty array when the key is absent. The instance is cached per gateway name for the lifetime of the manager, so keep it free of per request state.
+The closure receives the container and `config('payline.gateways.my-gateway')`, which is an empty array when the key is absent. Payline merges the global `test_mode` into that array before handing it over. The instance is cached per gateway name for the lifetime of the manager, so keep it free of per request state.
+
+## Test and Live Addresses
+
+A provider has a test environment and a live one, and Payline knows the address of neither. The package ships both and chooses between them with the `test_mode` it was handed:
+
+```php
+class MyGateway implements Gateway
+{
+    private const TEST_BASE_URL = 'https://test.provider.example';
+
+    private const LIVE_BASE_URL = 'https://provider.example';
+
+    private readonly string $baseUrl;
+
+    public function __construct(private readonly array $config)
+    {
+        $this->baseUrl = $config['base_url']
+            ?? (($config['test_mode'] ?? false) ? self::TEST_BASE_URL : self::LIVE_BASE_URL);
+    }
+}
+```
+
+`base_url` carries a scheme and a host, and the package appends its own paths to it. An explicit `base_url` in the gateway entry wins over both constants, which covers a provider that hands a merchant an address of its own.
+
+A gateway entry may set `test_mode` itself, and that value arrives in place of the global one. The gateway reads a single key either way and never asks Payline which mode is in effect.
+
+Credentials are not part of this. A test environment has its own merchant identifiers and keys, and those come from the gateway entry like any other setting.
 
 ## Declaring Capabilities
 
