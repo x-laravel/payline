@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Facade;
 use XLaravel\Payline\Contracts\Gateway;
 use XLaravel\Payline\Contracts\Payable;
 use XLaravel\Payline\DTOs\CardProfile;
+use XLaravel\Payline\Models\CommissionRate;
 use XLaravel\Payline\Models\Payment;
 use XLaravel\Payline\Models\Transaction;
 use XLaravel\Payline\Models\WebhookLog;
@@ -35,6 +36,8 @@ class Payline extends Facade
     protected static ?string $transactionModel = null;
 
     protected static ?string $webhookLogModel = null;
+
+    protected static ?string $commissionRateModel = null;
 
     protected static function getFacadeAccessor(): string
     {
@@ -75,5 +78,17 @@ class Payline extends Facade
     {
         return static::$webhookLogModel
             ?? config('payline.models.webhook_log', WebhookLog::class);
+    }
+
+    public static function useCommissionRateModel(string $model): void
+    {
+        static::$commissionRateModel = $model;
+    }
+
+    /** @return class-string<CommissionRate> */
+    public static function commissionRateModel(): string
+    {
+        return static::$commissionRateModel
+            ?? config('payline.models.commission_rate', CommissionRate::class);
     }
 }

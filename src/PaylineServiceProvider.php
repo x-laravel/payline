@@ -7,6 +7,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\ServiceProvider;
 use XLaravel\Payline\Console\PaylineDoctorCommand;
 use XLaravel\Payline\Console\ReconcilePaymentsCommand;
+use XLaravel\Payline\Console\SyncCommissionRatesCommand;
 use XLaravel\Payline\Contracts\CallbackRedirectResolver;
 use XLaravel\Payline\Gateway\GatewayInvoker;
 use XLaravel\Payline\Gateway\GatewayResolver;
@@ -40,6 +41,7 @@ class PaylineServiceProvider extends ServiceProvider
             $this->commands([
                 PaylineDoctorCommand::class,
                 ReconcilePaymentsCommand::class,
+                SyncCommissionRatesCommand::class,
             ]);
         }
 

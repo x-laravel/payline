@@ -29,6 +29,7 @@ Implement `Gateway` plus one interface per operation you support. Implement noth
 | `RefundsPayments` | `refund(RefundData $data): PaymentResponse` |
 | `VoidsPayments` | `void(VoidData $data): PaymentResponse` |
 | `QueriesPayments` | `queryPayment(PaymentQuery $query): PaymentResponse` |
+| `ProvidesCommissionRates` | `commissionRates(): array` |
 | `HandlesCallbacks` | `handleCallback(CallbackData $data): PaymentResponse` |
 | `HandlesWebhooks` | `verifyWebhook(array $payload, string $signature): bool`, `parseWebhook(array $payload): PaymentResponse` |
 | `HandlesRawWebhooks` | `verifyIncomingNotification(IncomingNotification $n): bool`, `parseIncomingNotification(IncomingNotification $n): PaymentResponse` |
@@ -194,6 +195,21 @@ Never return `true` from a verification method that does not verify. A driver wi
 ## Supporting Reconciliation
 
 `queryPayment()` receives whichever of the provider transaction id, provider order id and merchant reference are known, and returns the current state of that payment. Return the operation type the payment started with, and `Unknown` when the provider itself cannot say.
+
+## Publishing Commission Rates
+
+Implement `ProvidesCommissionRates` when the provider states what it charges. Return one `CommissionRateData` per card family and installment count, and throw when the provider refuses:
+
+```php
+public function commissionRates(): array
+{
+    return [
+        new CommissionRateData(rate: 2.03, installments: 1, cardFamily: 'Bonus'),
+    ];
+}
+```
+
+`rate` is a percentage, so 2.03 means 2.03%. Ranking compares it against every other gateway's rows, so a driver reporting a fraction where the rest report a percentage wins every comparison. Leave `cardType` and `blockingDays` null when the provider does not report them.
 
 ## Testing a Driver
 

@@ -42,6 +42,12 @@ class PaylineManager extends Manager
             || method_exists($this, 'create' . Str::studly($driver) . 'Driver');
     }
 
+    /** @return string[] */
+    public function registeredDrivers(): array
+    {
+        return array_keys($this->customCreators);
+    }
+
     public function via(?string $driver = null): PendingPayment
     {
         return $this->pendingPayment(

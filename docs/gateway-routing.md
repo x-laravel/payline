@@ -4,6 +4,7 @@
 - [The Card Profile](#the-card-profile)
 - [BIN Lookup](#bin-lookup)
 - [Commission Rates](#commission-rates)
+- [Reading Rates From the Provider](#reading-rates-from-the-provider)
 - [How a Rate Is Matched](#how-a-rate-is-matched)
 - [Capability Filtering](#capability-filtering)
 - [Routing Policies](#routing-policies)
@@ -79,6 +80,21 @@ Rates live in `payline_commission_rates`, one row per gateway, card family, card
 | `blocking_days` | Settlement delay in days, recorded but not used in ranking |
 
 The table uses soft deletes, so a rate can be withdrawn without losing the history.
+
+## Reading Rates From the Provider
+
+Some providers publish the rates they charge. A driver that implements `ProvidesCommissionRates` returns them, and one command writes them into the table:
+
+```shell
+php artisan payline:sync-rates
+php artisan payline:sync-rates --gateway=hoppa --dry-run
+```
+
+A row is identified by gateway, card family, card type and installment count, so a second run updates rather than duplicates, and a rate that returns after being deleted is restored. Rows for a gateway that reports nothing, and rows entered by hand, are left alone. `--dry-run` prints what would be written.
+
+A provider that reports no card type leaves the column null, which the matching above treats as a wildcard.
+
+The command fails when a named gateway is not registered or a provider refuses the listing, and skips a driver that does not implement the contract.
 
 ## How a Rate Is Matched
 

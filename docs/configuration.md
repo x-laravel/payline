@@ -93,7 +93,7 @@ The `null` driver resolves no card profile, which leaves commission routing inac
 | `models.webhook_log` | `class-string` | `XLaravel\Payline\Models\WebhookLog` |
 | `models.commission_rate` | `class-string` | `XLaravel\Payline\Models\CommissionRate` |
 
-Payment, transaction and webhook log models can also be set at boot time, which takes precedence over configuration:
+All four models can also be set at boot time, which takes precedence over configuration:
 
 ```php
 use XLaravel\Payline\Facades\Payline;
@@ -101,6 +101,7 @@ use XLaravel\Payline\Facades\Payline;
 Payline::usePaymentModel(MyPayment::class);
 Payline::useTransactionModel(MyTransaction::class);
 Payline::useWebhookLogModel(MyWebhookLog::class);
+Payline::useCommissionRateModel(MyCommissionRate::class);
 ```
 
 A replacement extends the Payline model, so relationships, casts and connection handling stay intact.
