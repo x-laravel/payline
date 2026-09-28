@@ -22,7 +22,7 @@ Implement `Gateway` plus one interface per operation you support. Implement noth
 
 | Contract | Method |
 |----------|--------|
-| `Gateway` | `getName(): string`, `supportedMethods(): array` |
+| `Gateway` | `getName(): string` |
 | `ChargesPayments` | `pay(PaymentRequest $data): PaymentResponse` |
 | `AuthorizesPayments` | `authorize(PaymentRequest $data): PaymentResponse` |
 | `CapturesPayments` | `capture(CaptureData $data): PaymentResponse` |
@@ -43,7 +43,6 @@ use XLaravel\Payline\Contracts\ChargesPayments;
 use XLaravel\Payline\Contracts\Gateway;
 use XLaravel\Payline\DTOs\PaymentRequest;
 use XLaravel\Payline\DTOs\PaymentResponse;
-use XLaravel\Payline\Enums\PaymentMethod;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Enums\TransactionType;
 
@@ -54,11 +53,6 @@ class MyGateway implements ChargesPayments, Gateway
     public function getName(): string
     {
         return 'my-gateway';
-    }
-
-    public function supportedMethods(): array
-    {
-        return [PaymentMethod::CreditCard];
     }
 
     public function pay(PaymentRequest $data): PaymentResponse

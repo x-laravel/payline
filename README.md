@@ -359,11 +359,6 @@ class MyGateway implements Gateway, ChargesPayments, ProvidesGatewayCapabilities
         return 'my-gateway';
     }
 
-    public function supportedMethods(): array
-    {
-        return [PaymentMethod::CreditCard];
-    }
-
     public function pay(PaymentRequest $data): PaymentResponse
     {
         return $this->createPayment($data);

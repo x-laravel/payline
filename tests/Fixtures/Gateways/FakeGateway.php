@@ -81,11 +81,6 @@ class FakeGateway implements
         return $this->response(TransactionType::Payment);
     }
 
-    public function supportedMethods(): array
-    {
-        return [];
-    }
-
     public function getName(): string
     {
         return 'fake';

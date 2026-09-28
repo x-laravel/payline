@@ -55,7 +55,7 @@ For a refund it locks the payment as well and applies a second ceiling against t
 
 ## Capability Contracts
 
-`Gateway` carries only `getName()` and `supportedMethods()`. Every operation lives in its own interface: `ChargesPayments`, `AuthorizesPayments`, `CapturesPayments`, `RefundsPayments`, `VoidsPayments`, `QueriesPayments`, `HandlesCallbacks`, `HandlesWebhooks`, `HandlesRawWebhooks`.
+`Gateway` carries only `getName()`. Every operation lives in its own interface: `ChargesPayments`, `AuthorizesPayments`, `CapturesPayments`, `RefundsPayments`, `VoidsPayments`, `QueriesPayments`, `HandlesCallbacks`, `HandlesWebhooks`, `HandlesRawWebhooks`.
 
 `TransactionType` maps each operation to its contract and method name, and `GatewayInvoker` refuses to call a driver that does not implement the contract. A driver therefore declares what it supports by implementing interfaces, and routing can ask the same question without calling the provider. See [decision 0001](decisions/0001-capability-contracts-are-mandatory.md).
 
