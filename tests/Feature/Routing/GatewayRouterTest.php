@@ -4,12 +4,20 @@ namespace XLaravel\Payline\Tests\Feature\Routing;
 
 use XLaravel\Payline\DTOs\CardProfile;
 use XLaravel\Payline\Enums\CardType;
+use XLaravel\Payline\Facades\Payline;
 use XLaravel\Payline\Models\CommissionRate;
 use XLaravel\Payline\Routing\GatewayRouter;
 use XLaravel\Payline\Tests\TestCase;
 
 class GatewayRouterTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        Payline::rankUsing(null);
+
+        parent::tearDown();
+    }
+
     public function test_returns_cheapest_gateway(): void
     {
         CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.03]);
@@ -50,9 +58,9 @@ class GatewayRouterTest extends TestCase
         $this->assertSame(3.00, $ranked['qnb']);
     }
 
-    public function test_the_days_a_gateway_holds_the_money_are_ignored_until_capital_is_priced(): void
+    public function test_the_commission_rate_is_the_cost_until_something_says_otherwise(): void
     {
-        CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.25, 'blocking_days' => 14]);
+        CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.25, 'blocking_days' => 15]);
         CommissionRate::create(['gateway' => 'qnb', 'installments' => 1, 'rate' => 2.91, 'blocking_days' => 5]);
 
         $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(family: 'bonus', type: CardType::Credit));
@@ -61,29 +69,46 @@ class GatewayRouterTest extends TestCase
         $this->assertSame(2.25, $ranked['hoppa']);
     }
 
-    public function test_a_cheaper_rate_loses_to_a_shorter_hold_once_capital_is_priced(): void
+    public function test_the_application_decides_what_a_gateway_costs(): void
     {
-        config(['payline.routing.cost_of_capital' => 40]);
+        Payline::rankUsing(fn (CommissionRate $rate) => (float) $rate->rate + 45 * $rate->blocking_days / 365);
 
-        CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.25, 'blocking_days' => 14]);
+        CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.25, 'blocking_days' => 15]);
         CommissionRate::create(['gateway' => 'qnb', 'installments' => 1, 'rate' => 2.91, 'blocking_days' => 5]);
 
         $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(family: 'bonus', type: CardType::Credit));
 
         $this->assertSame(['qnb', 'hoppa'], array_keys($ranked));
-        $this->assertEqualsWithDelta(3.4579, $ranked['qnb'], 0.0001);
-        $this->assertEqualsWithDelta(3.7842, $ranked['hoppa'], 0.0001);
+        $this->assertEqualsWithDelta(3.5264, $ranked['qnb'], 0.0001);
+        $this->assertEqualsWithDelta(4.0993, $ranked['hoppa'], 0.0001);
     }
 
-    public function test_a_rate_that_names_no_holding_period_is_priced_on_its_rate_alone(): void
+    public function test_the_card_reaches_the_ranking_so_it_can_be_priced_on_where_it_came_from(): void
     {
-        config(['payline.routing.cost_of_capital' => 40]);
+        Payline::rankUsing(fn (CommissionRate $rate, CardProfile $profile) => $rate->gateway === 'qnb' && $profile->issuedOutside('TR')
+            ? 0.0
+            : (float) $rate->rate);
 
         CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.25]);
+        CommissionRate::create(['gateway' => 'qnb', 'installments' => 1, 'rate' => 2.91]);
 
-        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(family: 'bonus', type: CardType::Credit));
+        $domestic = app(GatewayRouter::class)->rankedFor(new CardProfile(issuerCountry: 'TR'));
+        $foreign = app(GatewayRouter::class)->rankedFor(new CardProfile(issuerCountry: 'DE'));
 
-        $this->assertSame(2.25, $ranked['hoppa']);
+        $this->assertSame(['hoppa', 'qnb'], array_keys($domestic));
+        $this->assertSame(['qnb', 'hoppa'], array_keys($foreign));
+        $this->assertSame(0.0, $foreign['qnb']);
+    }
+
+    public function test_the_installment_count_reaches_the_ranking(): void
+    {
+        Payline::rankUsing(fn (CommissionRate $rate, CardProfile $profile, int $installments) => (float) $installments);
+
+        CommissionRate::create(['gateway' => 'hoppa', 'installments' => 3, 'rate' => 2.25]);
+
+        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(), installments: 3);
+
+        $this->assertSame(3.0, $ranked['hoppa']);
     }
 
     public function test_a_profile_without_a_family_or_type_only_matches_wildcard_rates(): void

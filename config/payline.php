@@ -41,7 +41,6 @@ return [
     ],
 
     'routing' => [
-        'cost_of_capital' => env('PAYLINE_COST_OF_CAPITAL', 0),
         'policies' => [],
     ],
 

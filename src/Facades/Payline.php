@@ -28,6 +28,8 @@ use XLaravel\Payline\PendingPaymentBuilder;
  * @method static ?string cheapestFor(CardProfile $profile, int $installments = 1)
  * @method static PaylineManager extend(string $gateway, Closure $callback)
  *
+ * @see Payline::rankUsing()
+ *
  * @see PaylineManager
  */
 class Payline extends Facade
@@ -41,6 +43,23 @@ class Payline extends Facade
     protected static ?string $webhookLogModel = null;
 
     protected static ?string $commissionRateModel = null;
+
+    protected static ?Closure $ranker = null;
+
+    /**
+     * Decides what a gateway costs for a card, which is what routing sorts on.
+     * The callback receives the matched CommissionRate, the CardProfile and the
+     * installment count, and returns a number where lower wins.
+     */
+    public static function rankUsing(?Closure $callback): void
+    {
+        static::$ranker = $callback;
+    }
+
+    public static function ranker(): Closure
+    {
+        return static::$ranker ?? static fn (CommissionRate $rate): float => (float) $rate->rate;
+    }
 
     protected static function getFacadeAccessor(): string
     {

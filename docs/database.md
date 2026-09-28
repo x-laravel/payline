@@ -112,7 +112,7 @@ Provider pricing used by commission routing.
 | `card_type` | `string(30)`, nullable | Null matches any type |
 | `installments` | `unsignedTinyInteger` | Matched exactly, defaults to 1 |
 | `rate` | `decimal(8,4)` | Commission percentage |
-| `blocking_days` | `unsignedTinyInteger`, nullable | Days the gateway holds the money; priced into ranking through `routing.cost_of_capital` |
+| `blocking_days` | `unsignedTinyInteger`, nullable | Days the gateway holds the money; ignored by ranking unless `Payline::rankUsing()` reads it |
 
 Uses soft deletes. Index: `(gateway, card_family, card_type, installments)`.
 

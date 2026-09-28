@@ -3,6 +3,7 @@
 namespace XLaravel\Payline\Routing;
 
 use XLaravel\Payline\DTOs\CardProfile;
+use XLaravel\Payline\Facades\Payline;
 use XLaravel\Payline\Models\CommissionRate;
 
 class GatewayRouter
@@ -20,8 +21,7 @@ class GatewayRouter
      *
      * Match priority: card_family + card_type exact match > partial > wildcard (null)
      *
-     * The cost is the commission rate plus what the money is worth over the days the
-     * gateway holds it, which is the rate alone while no cost of capital is configured.
+     * The commission rate is the cost unless Payline::rankUsing() says otherwise.
      */
     public function rankedFor(CardProfile $profile, int $installments = 1): array
     {
@@ -35,22 +35,17 @@ class GatewayRouter
             ->orderBy('rate')
             ->get();
 
+        $ranker = Payline::ranker();
+
         $result = [];
         foreach ($rates as $rate) {
             if (!isset($result[$rate->gateway])) {
-                $result[$rate->gateway] = $this->cost($rate);
+                $result[$rate->gateway] = (float) $ranker($rate, $profile, $installments);
             }
         }
 
         asort($result);
         return $result;
-    }
-
-    private function cost(object $rate): float
-    {
-        $costOfCapital = (float) config('payline.routing.cost_of_capital', 0);
-
-        return (float) $rate->rate + $costOfCapital * (int) $rate->blocking_days / 365;
     }
 
     /**

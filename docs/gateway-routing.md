@@ -4,6 +4,7 @@
 - [The Card Profile](#the-card-profile)
 - [BIN Lookup](#bin-lookup)
 - [Commission Rates](#commission-rates)
+- [What Cheapest Means](#what-cheapest-means)
 - [Reading Rates From the Provider](#reading-rates-from-the-provider)
 - [How a Rate Is Matched](#how-a-rate-is-matched)
 - [Capability Filtering](#capability-filtering)
@@ -123,7 +124,33 @@ Rates live in `payline_commission_rates`, one row per gateway, card family, card
 
 The table uses soft deletes, so a rate can be withdrawn without losing the history.
 
-Ranking prices the commission and the wait together: `rate + cost_of_capital * blocking_days / 365`. With `routing.cost_of_capital` left at `0` the wait costs nothing and gateways rank on the commission alone, which is how an installation that never sets it behaves. Set it and a rate that is cheaper on paper can lose to one that settles sooner, which is the point.
+## What Cheapest Means
+
+Gateways are ranked by their commission rate, and the lowest wins.
+
+That is one definition of cheapest and not everyone's. A rate is what the gateway keeps; how long it holds the rest is a cost too, and a provider that settles in five days can be worth more than one that is a quarter of a point cheaper and settles in fifteen. Another shop would rather have the money soonest whatever it costs, and a third prices a card from abroad differently again. Payline cannot know which of these is you, so it decides nothing and hands the question over:
+
+```php
+use XLaravel\Payline\DTOs\CardProfile;
+use XLaravel\Payline\Facades\Payline;
+use XLaravel\Payline\Models\CommissionRate;
+
+Payline::rankUsing(function (CommissionRate $rate, CardProfile $profile, int $installments): float {
+    return $rate->rate + 45 * $rate->blocking_days / 365;
+});
+```
+
+Lower wins, and the returned number is what `rankedFor()` reports. Register it in a service provider's `boot()`.
+
+The card profile is handed over with the rate, so a rule can turn on where the card came from without the rates table carrying a column for it:
+
+```php
+Payline::rankUsing(fn (CommissionRate $rate, CardProfile $profile): float => $rate->gateway === 'qnb' && $profile->issuedOutside(config('payline.country'))
+    ? 0.0
+    : (float) $rate->rate);
+```
+
+Leave it alone and the commission rate is the cost, which is what an installation that never calls it has always done.
 
 ## Reading Rates From the Provider
 

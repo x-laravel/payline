@@ -104,19 +104,7 @@ A gateway entry may override both with its own `callback_success_url` and `callb
 
 | Key | Type | Default | Meaning |
 |-----|------|---------|---------|
-| `routing.cost_of_capital` | `float` | `env('PAYLINE_COST_OF_CAPITAL', 0)` | Annual cost of money as a percentage, used to price the days a gateway holds a payment |
 | `routing.policies` | `array` | `[]` | Classes implementing `GatewayRoutingPolicy`, applied to every gateway choice |
-
-A commission rate may name a `blocking_days`, the days between the payment and the money arriving. Two gateways with the same rate do not cost the same if one settles in five days and the other in fourteen, and the cheaper rate is sometimes the worse deal:
-
-| Gateway | Rate | Holds | Cost at 40% |
-|---------|------|-------|-------------|
-| A | 2.25 | 14 days | 3.78 |
-| B | 2.91 | 5 days | 3.46 |
-
-`cost_of_capital` is what turns that into a number: `rate + cost_of_capital * blocking_days / 365`. It defaults to `0`, which prices holding at nothing and ranks on the commission rate alone, exactly as an installation that never sets it always did. A rate that names no `blocking_days` is priced on its rate alone.
-
-Payline holds no opinion about what capital costs. The figure belongs to the merchant.
 
 Policies are resolved from the container. A class that does not implement the contract throws a `LogicException`.
 
@@ -211,7 +199,6 @@ Matching is case insensitive and recurses into nested arrays. Redaction happens 
 | `PAYLINE_TEST_MODE` | `test_mode` |
 | `PAYLINE_CURRENCY` | `currency` |
 | `PAYLINE_COUNTRY` | `country` |
-| `PAYLINE_COST_OF_CAPITAL` | `routing.cost_of_capital` |
 | `PAYLINE_DB_CONNECTION` | `database.connection` |
 | `PAYLINE_PENDING_TTL` | `transactions.pending_ttl` |
 | `PAYLINE_CALLBACK_SUCCESS_URL` | `callback_success_url` |
