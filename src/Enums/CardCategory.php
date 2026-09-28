@@ -10,7 +10,7 @@ enum CardCategory: string
     public static function parse(?string $value): ?self
     {
         return match (preg_replace('/[^a-z]/', '', mb_strtolower((string) $value, 'UTF-8'))) {
-            'consumer', 'personal', 'individual', 'classic' => self::Consumer,
+            'consumer', 'personal', 'individual' => self::Consumer,
             'commercial', 'business', 'corporate' => self::Commercial,
             default => null,
         };
