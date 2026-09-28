@@ -119,9 +119,11 @@ Rates live in `payline_commission_rates`, one row per gateway, card family, card
 | `card_type` | Card type, or `null` for any type |
 | `installments` | Installment count the rate applies to |
 | `rate` | Commission percentage, `decimal(8,4)` |
-| `blocking_days` | Settlement delay in days, recorded but not used in ranking |
+| `blocking_days` | Days the gateway holds the money before it settles |
 
 The table uses soft deletes, so a rate can be withdrawn without losing the history.
+
+Ranking prices the commission and the wait together: `rate + cost_of_capital * blocking_days / 365`. With `routing.cost_of_capital` left at `0` the wait costs nothing and gateways rank on the commission alone, which is how an installation that never sets it behaves. Set it and a rate that is cheaper on paper can lose to one that settles sooner, which is the point.
 
 ## Reading Rates From the Provider
 

@@ -74,6 +74,7 @@ class TransactionRecorder
         $model = $this->paymentModel();
         $storeCardDetails = config('payline.storage.card_details', true);
         $storeCardHolder = config('payline.storage.card_holder_name', true);
+        $profile = config('payline.storage.card_profile', true) ? $data->profile() : null;
 
         return $model::create([
             'gateway' => $gateway,
@@ -90,6 +91,11 @@ class TransactionRecorder
             'card_bin' => $storeCardDetails ? $data->card?->bin() : null,
             'card_last_four' => $storeCardDetails ? $data->card?->lastFour() : null,
             'card_holder_name' => $storeCardHolder ? $data->card?->holderName : null,
+            'card_family' => $profile?->family,
+            'card_type' => $profile?->type?->value,
+            'card_scheme' => $profile?->scheme?->value,
+            'card_issuer' => $profile?->issuer,
+            'card_issuer_country' => $profile?->issuerCountry,
             'reference' => $data->reference,
             'description' => $data->description,
             'metadata' => $data->metadata,

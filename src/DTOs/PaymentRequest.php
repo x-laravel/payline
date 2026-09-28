@@ -60,6 +60,14 @@ readonly class PaymentRequest
         return $this->with(['callbackUrl' => $url]);
     }
 
+    /**
+     * A profile resolved onto the card wins over one given on the request.
+     */
+    public function profile(): ?CardProfile
+    {
+        return $this->card?->profile ?? $this->cardProfile;
+    }
+
     public function fingerprint(): string
     {
         return hash('sha256', json_encode([

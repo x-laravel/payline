@@ -7,6 +7,8 @@ return [
 
     'currency' => env('PAYLINE_CURRENCY', 'TRY'),
 
+    'country' => env('PAYLINE_COUNTRY'),
+
     'gateways' => [
         'iyzico' => [
             'api_key' => env('IYZICO_API_KEY'),
@@ -39,6 +41,7 @@ return [
     ],
 
     'routing' => [
+        'cost_of_capital' => env('PAYLINE_COST_OF_CAPITAL', 0),
         'policies' => [],
     ],
 
@@ -60,6 +63,7 @@ return [
     'storage' => [
         'card_details' => true,
         'card_holder_name' => true,
+        'card_profile' => true,
         'webhook_payload' => true,
     ],
 

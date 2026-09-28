@@ -29,6 +29,12 @@ return new class extends Migration
             $table->char('card_last_four', 4)->nullable();
             $table->string('card_holder_name')->nullable();
 
+            $table->string('card_family', 50)->nullable();
+            $table->string('card_type', 30)->nullable();
+            $table->string('card_scheme', 20)->nullable();
+            $table->string('card_issuer', 100)->nullable();
+            $table->char('card_issuer_country', 2)->nullable();
+
             $table->nullableMorphs('payable');
             $table->nullableMorphs('owner');
 

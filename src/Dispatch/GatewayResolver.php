@@ -33,7 +33,7 @@ class GatewayResolver
             return $preferred;
         }
 
-        $profile = $data->card?->profile ?? $data->cardProfile;
+        $profile = $data->profile();
 
         if ($autoRoute && $profile !== null) {
             foreach (array_keys($this->router->rankedFor($profile, $data->installments ?? 1)) as $name) {

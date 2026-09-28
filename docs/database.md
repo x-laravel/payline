@@ -34,6 +34,13 @@ The aggregate record of a checkout attempt.
 | `card_bin` | `char(8)`, nullable | First eight digits |
 | `card_last_four` | `char(4)`, nullable | Last four digits |
 | `card_holder_name` | `string`, nullable | |
+| `card_family` | `string(50)`, nullable | Loyalty program the card belonged to |
+| `card_type` | `string(30)`, nullable | `credit`, `debit`, `prepaid` or `charge` |
+| `card_scheme` | `string(20)`, nullable | `visa`, `mastercard`, `troy` and so on |
+| `card_issuer` | `string(100)`, nullable | Issuing bank as the lookup named it |
+| `card_issuer_country` | `char(2)`, nullable | ISO 3166-1 alpha-2 |
+
+The five profile columns are a snapshot taken when the payment was made, not a pointer to what a BIN lookup would answer today. `card_family` and `card_type` are the pair a commission rate is matched on, so together with `gateway` they say why the payment went where it did. The rest is there to report on. Writing them is governed by `storage.card_profile`.
 | `payable_type` / `payable_id` | nullable morph | The thing being paid for |
 | `owner_type` / `owner_id` | nullable morph | Who is paying |
 | `reference` | `string`, nullable, indexed | Merchant reference |
@@ -105,7 +112,7 @@ Provider pricing used by commission routing.
 | `card_type` | `string(30)`, nullable | Null matches any type |
 | `installments` | `unsignedTinyInteger` | Matched exactly, defaults to 1 |
 | `rate` | `decimal(8,4)` | Commission percentage |
-| `blocking_days` | `unsignedTinyInteger`, nullable | Recorded but not used in ranking |
+| `blocking_days` | `unsignedTinyInteger`, nullable | Days the gateway holds the money; priced into ranking through `routing.cost_of_capital` |
 
 Uses soft deletes. Index: `(gateway, card_family, card_type, installments)`.
 

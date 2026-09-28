@@ -50,6 +50,42 @@ class GatewayRouterTest extends TestCase
         $this->assertSame(3.00, $ranked['qnb']);
     }
 
+    public function test_the_days_a_gateway_holds_the_money_are_ignored_until_capital_is_priced(): void
+    {
+        CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.25, 'blocking_days' => 14]);
+        CommissionRate::create(['gateway' => 'qnb', 'installments' => 1, 'rate' => 2.91, 'blocking_days' => 5]);
+
+        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(family: 'bonus', type: CardType::Credit));
+
+        $this->assertSame(['hoppa', 'qnb'], array_keys($ranked));
+        $this->assertSame(2.25, $ranked['hoppa']);
+    }
+
+    public function test_a_cheaper_rate_loses_to_a_shorter_hold_once_capital_is_priced(): void
+    {
+        config(['payline.routing.cost_of_capital' => 40]);
+
+        CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.25, 'blocking_days' => 14]);
+        CommissionRate::create(['gateway' => 'qnb', 'installments' => 1, 'rate' => 2.91, 'blocking_days' => 5]);
+
+        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(family: 'bonus', type: CardType::Credit));
+
+        $this->assertSame(['qnb', 'hoppa'], array_keys($ranked));
+        $this->assertEqualsWithDelta(3.4579, $ranked['qnb'], 0.0001);
+        $this->assertEqualsWithDelta(3.7842, $ranked['hoppa'], 0.0001);
+    }
+
+    public function test_a_rate_that_names_no_holding_period_is_priced_on_its_rate_alone(): void
+    {
+        config(['payline.routing.cost_of_capital' => 40]);
+
+        CommissionRate::create(['gateway' => 'hoppa', 'installments' => 1, 'rate' => 2.25]);
+
+        $ranked = app(GatewayRouter::class)->rankedFor(new CardProfile(family: 'bonus', type: CardType::Credit));
+
+        $this->assertSame(2.25, $ranked['hoppa']);
+    }
+
     public function test_a_profile_without_a_family_or_type_only_matches_wildcard_rates(): void
     {
         CommissionRate::create(['gateway' => 'hoppa', 'card_family' => null, 'card_type' => null, 'installments' => 1, 'rate' => 2.50]);

@@ -15,10 +15,13 @@ class GatewayRouter
     }
 
     /**
-     * Returns all gateways sorted ascending by commission rate for the given card profile
-     * and installment count: ['hoppa' => 2.0300, 'qnb' => 2.9200]
+     * Returns all gateways sorted ascending by what the payment costs for the given card
+     * profile and installment count: ['hoppa' => 2.0300, 'qnb' => 2.9200]
      *
      * Match priority: card_family + card_type exact match > partial > wildcard (null)
+     *
+     * The cost is the commission rate plus what the money is worth over the days the
+     * gateway holds it, which is the rate alone while no cost of capital is configured.
      */
     public function rankedFor(CardProfile $profile, int $installments = 1): array
     {
@@ -35,12 +38,19 @@ class GatewayRouter
         $result = [];
         foreach ($rates as $rate) {
             if (!isset($result[$rate->gateway])) {
-                $result[$rate->gateway] = (float) $rate->rate;
+                $result[$rate->gateway] = $this->cost($rate);
             }
         }
 
         asort($result);
         return $result;
+    }
+
+    private function cost(object $rate): float
+    {
+        $costOfCapital = (float) config('payline.routing.cost_of_capital', 0);
+
+        return (float) $rate->rate + $costOfCapital * (int) $rate->blocking_days / 365;
     }
 
     /**

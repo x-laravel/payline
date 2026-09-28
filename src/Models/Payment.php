@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use XLaravel\Payline\Concerns\UsesPaylineConnection;
 use XLaravel\Payline\Facades\Payline;
+use XLaravel\Payline\Enums\CardScheme;
+use XLaravel\Payline\Enums\CardType;
 use XLaravel\Payline\Enums\PaymentStatus;
 use XLaravel\Payline\Enums\TransactionStatus;
 use XLaravel\Payline\Enums\TransactionType;
@@ -27,6 +29,8 @@ class Payment extends Model
         return [
             'status' => PaymentStatus::class,
             'initial_type' => TransactionType::class,
+            'card_type' => CardType::class,
+            'card_scheme' => CardScheme::class,
             'metadata' => 'array',
             'completed_at' => 'datetime',
         ];
