@@ -73,6 +73,7 @@ For a refund it locks the payment as well and applies a second ceiling against t
 | `Dispatch\GatewayResolver` | Gateway selection and support checks |
 | `Dispatch\GatewayInvoker` | Contract check and the provider call |
 | `Routing\GatewayRouter` | Commission ranking from `payline_commission_rates` |
+| `BinLookupManager` | Asks every configured BIN provider and merges what they answer |
 | `Routing\GatewayPolicyPipeline` | Application supplied routing policies |
 | `TransactionRecorder` | Row creation, idempotency and lookups |
 | `Payments\AmountLedger` | Capture and refund ceilings |

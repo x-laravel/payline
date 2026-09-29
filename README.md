@@ -433,6 +433,13 @@ return [
 
     'currency' => env('PAYLINE_CURRENCY', 'TRY'),
 
+    'country' => env('PAYLINE_COUNTRY'),
+
+    'bin_lookup' => [
+        'providers' => [],
+        'drivers' => [],
+    ],
+
     'routes' => [
         'enabled' => true,
         'prefix' => 'payline',
@@ -451,6 +458,7 @@ return [
     'storage' => [
         'card_details' => true,
         'card_holder_name' => true,
+        'card_profile' => true,
         'webhook_payload' => true,
     ],
 ];
@@ -458,7 +466,9 @@ return [
 
 Set `PAYLINE_DB_CONNECTION` to use a dedicated Laravel database connection. Disable storage fields the application does not need. `payline.currency` applies only when a charge has neither a payable nor an explicit `currency()`.
 
-Payline never stores the complete card number or CVV. Optional card storage is limited to BIN, last four digits, and cardholder name. `Card` masks sensitive fields in debug and JSON output.
+Payline never stores the complete card number or CVV. Optional card storage is limited to the BIN, the last four digits, the cardholder name, and the resolved card profile: family, type, scheme, issuer and issuing country. `Card` masks sensitive fields in debug and JSON output.
+
+`storage.card_profile` is a separate switch from `storage.card_details` because the two are turned off for different reasons. A BIN identifies a card; a card family identifies a commission rate, and it is what says why a payment went to the gateway it went to.
 
 Models can be replaced through `payline.models`, or from `AppServiceProvider::boot()`:
 
